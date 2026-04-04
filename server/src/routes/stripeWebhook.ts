@@ -43,6 +43,26 @@ router.post("/", async (req: Request, res: Response) => {
             playerId,
           },
         });
+      } else if (type === "PRINT_ORDER") {
+        const { printOrderId } = session.metadata ?? {};
+        if (printOrderId) {
+          await prisma.printOrder.update({
+            where: { id: printOrderId },
+            data: {
+              status: "QUEUED",
+              stripePaymentId: session.payment_intent ?? session.id,
+            },
+          });
+          await prisma.transaction.create({
+            data: {
+              type: "PRINT_ORDER",
+              xpAmount: 0,
+              usdAmount: session.amount_total / 100,
+              stripePaymentId: session.payment_intent ?? session.id,
+              playerId,
+            },
+          });
+        }
       } else if (packName && xpAmount) {
         const xp = parseInt(xpAmount, 10);
         await prisma.$transaction([

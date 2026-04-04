@@ -19,6 +19,10 @@ import seasonRoutes from "./routes/seasons";
 import tournamentRoutes from "./routes/tournaments";
 import questChainRoutes from "./routes/questChain";
 import stripeWebhookRoutes from "./routes/stripeWebhook";
+import mintRoutes from "./routes/mint";
+import printOrderRoutes from "./routes/printOrders";
+import printRunLimitRoutes from "./routes/printRunLimits";
+import coaRoutes from "./routes/coa";
 import { setupSocketHandlers } from "./lib/socket";
 import { setupArenaHandlers } from "./lib/combat";
 
@@ -50,6 +54,10 @@ app.use("/api/forge-shield", forgeShieldRoutes);
 app.use("/api/seasons", seasonRoutes);
 app.use("/api/tournaments", tournamentRoutes);
 app.use("/api/quest", questChainRoutes);
+app.use("/api/weapons", mintRoutes);       // /api/weapons/:id/mint, /minted/list, /public
+app.use("/api/weapons", coaRoutes);        // /api/weapons/:id/coa
+app.use("/api/print-orders", printOrderRoutes);
+app.use("/api/print-run-limits", printRunLimitRoutes);
 
 // Stripe webhook (raw body required)
 app.use(

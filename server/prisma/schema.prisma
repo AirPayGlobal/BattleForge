@@ -46,6 +46,7 @@ enum TransactionType {
   FORGE_SHIELD
   BATTLE_PASS
   GAUNTLET_WIN
+  PRINT_ORDER
 }
 
 enum TournamentStatus {
@@ -100,6 +101,8 @@ model Player {
   gauntlets           Gauntlet[]
   battlePasses        BattlePass[]
   tournamentEntries   TournamentEntry[]
+  printOrders         PrintOrder[]
+  printWaitlists      PrintWaitlist[]
 
   @@map("players")
 }
@@ -114,17 +117,22 @@ model Weapon {
   losses          Int         @default(0)
   isStaked        Boolean     @default(false) @map("is_staked")
   isPrintEligible Boolean     @default(false) @map("is_print_eligible")
+  printMinted     Boolean     @default(false) @map("print_minted")
+  mintSerialNumber String?    @unique @map("mint_serial_number")
+  mintedAt        DateTime?   @map("minted_at")
+  mintXpPaid      Int?        @map("mint_xp_paid")
   serialNumber    String      @unique @map("serial_number")
   forgeShield     Boolean     @default(false) @map("forge_shield")
   forgeShieldExp  DateTime?   @map("forge_shield_exp")
   createdAt       DateTime    @default(now()) @map("created_at")
 
-  owner           Player      @relation(fields: [ownerId], references: [id])
-  ownerId         String      @map("owner_id")
+  owner              Player           @relation(fields: [ownerId], references: [id])
+  ownerId            String           @map("owner_id")
 
-  challengerDuels    Duel[]            @relation("ChallengerWeapon")
-  defenderDuels      Duel[]            @relation("DefenderWeapon")
+  challengerDuels    Duel[]           @relation("ChallengerWeapon")
+  defenderDuels      Duel[]           @relation("DefenderWeapon")
   tournamentEntries  TournamentEntry[]
+  printOrders        PrintOrder[]
 
   @@map("weapons")
 }
@@ -208,6 +216,7 @@ model Season {
 
   tiers         BattlePassTier[]
   passes        BattlePass[]
+  printRunLimits PrintRunLimit[]
 
   @@map("seasons")
 }
@@ -289,4 +298,61 @@ model Notification {
   playerId  String           @map("player_id")
 
   @@map("notifications")
+}
+
+// ─── Phase 2.5 — Physical Print Mint Layer ──────────────────────────────────
+
+enum PrintOrderStatus {
+  QUEUED
+  PRINTING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model PrintOrder {
+  id              String           @id @default(uuid())
+  status          PrintOrderStatus @default(QUEUED)
+  fulfillmentRef  String?          @map("fulfillment_ref")
+  shippingAddress Json             @map("shipping_address")
+  priceUsd        Float            @map("price_usd")
+  stripePaymentId String?          @map("stripe_payment_id")
+  trackingLink    String?          @map("tracking_link")
+  mintSerial      String?          @map("mint_serial")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  player          Player           @relation(fields: [playerId], references: [id])
+  playerId        String           @map("player_id")
+
+  weapon          Weapon           @relation(fields: [weaponId], references: [id])
+  weaponId        String           @map("weapon_id")
+
+  @@map("print_orders")
+}
+
+model PrintRunLimit {
+  id           String   @id @default(uuid())
+  rank         String
+  seasonId     String?  @map("season_id")
+  maxPrints    Int      @map("max_prints")
+  currentCount Int      @default(0) @map("current_count")
+  season       Season?  @relation(fields: [seasonId], references: [id])
+
+  @@unique([rank, seasonId])
+  @@map("print_run_limits")
+}
+
+model PrintWaitlist {
+  id         String   @id @default(uuid())
+  rank       String
+  seasonId   String?  @map("season_id")
+  joinedAt   DateTime @default(now()) @map("joined_at")
+  notified   Boolean  @default(false)
+
+  player     Player   @relation(fields: [playerId], references: [id])
+  playerId   String   @map("player_id")
+
+  @@unique([playerId, rank, seasonId])
+  @@map("print_waitlists")
 }

@@ -13,6 +13,8 @@ import XPStorePage from "./pages/XPStorePage";
 import QuestChainPage from "./pages/QuestChainPage";
 import TournamentPage from "./pages/TournamentPage";
 import BattlePassPage from "./pages/BattlePassPage";
+import ForgeRoomPage from "./pages/ForgeRoomPage";
+import PublicWeaponPage from "./pages/PublicWeaponPage";
 import Layout from "./components/Layout";
 
 export default function App() {
@@ -53,7 +55,9 @@ export default function App() {
         <Route path="/quest" element={<QuestChainPage />} />
         <Route path="/tournaments" element={<TournamentPage />} />
         <Route path="/battle-pass" element={<BattlePassPage />} />
+        <Route path="/forge-room" element={<ForgeRoomPage />} />
       </Route>
+      <Route path="/weapon/:id/public" element={<PublicWeaponPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

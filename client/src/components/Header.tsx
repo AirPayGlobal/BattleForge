@@ -8,6 +8,7 @@ const navItems = [
   { to: "/arsenal", label: "Arsenal" },
   { to: "/tournaments", label: "Tournaments" },
   { to: "/quest", label: "Quest" },
+  { to: "/forge-room", label: "Mint" },
   { to: "/store", label: "Store" },
   { to: "/battle-pass", label: "Pass" },
 ];

@@ -50,6 +50,10 @@ export interface Weapon {
   losses: number;
   isStaked: boolean;
   isPrintEligible: boolean;
+  printMinted: boolean;
+  mintSerialNumber: string | null;
+  mintedAt: string | null;
+  mintXpPaid: number | null;
   serialNumber: string;
   forgeShield: boolean;
   forgeShieldExp: string | null;
