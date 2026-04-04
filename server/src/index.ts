@@ -28,14 +28,19 @@ import { setupArenaHandlers } from "./lib/combat";
 
 const app = express();
 const server = http.createServer(app);
+const CLIENT_ORIGIN =
+  process.env.NODE_ENV === "production"
+    ? process.env.CLIENT_URL || false
+    : "*";
+
 const io = new SocketServer(server, {
   cors: {
-    origin: process.env.NODE_ENV === "production" ? false : "*",
+    origin: CLIENT_ORIGIN,
     methods: ["GET", "POST"],
   },
 });
 
-app.use(cors());
+app.use(cors({ origin: CLIENT_ORIGIN }));
 app.use(express.json());
 
 // Make io accessible in routes
@@ -75,7 +80,8 @@ app.get("/api/health", (_req, res) => {
 setupSocketHandlers(io);
 setupArenaHandlers(io);
 
-const PORT = process.env.SERVER_PORT || 3001;
+// Railway injects PORT; SERVER_PORT is used locally
+const PORT = process.env.PORT || process.env.SERVER_PORT || 3001;
 
 server.listen(PORT, () => {
   console.log(`⚔️  BattleForge server running on port ${PORT}`);

@@ -1,0 +1,31 @@
+# ─── BattleForge — Railway deployment config ──────────────────────────────────
+# Docs: https://docs.railway.app/reference/config-as-code
+
+[build]
+# Point Railway at the server Dockerfile inside the monorepo
+builder       = "DOCKERFILE"
+dockerfilePath = "server/Dockerfile"
+
+[deploy]
+# Railway sets $PORT automatically — our server reads process.env.PORT
+healthcheckPath    = "/api/health"
+healthcheckTimeout = 30          # seconds before healthcheck is considered failed
+restartPolicyType  = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# ─── Environment variable reference ───────────────────────────────────────────
+# Set these in the Railway dashboard under your service → Variables.
+# DATABASE_URL is injected automatically when you add a PostgreSQL plugin.
+#
+# Required:
+#   DATABASE_URL            — auto-injected by Railway PostgreSQL plugin
+#   JWT_SECRET              — generate with: openssl rand -hex 32
+#   CLIENT_URL              — your production frontend URL (e.g. https://battleforge.vercel.app)
+#
+# Optional (Stripe):
+#   STRIPE_SECRET_KEY       — sk_live_... or sk_test_...
+#   STRIPE_WEBHOOK_SECRET   — whsec_... (from Stripe webhook dashboard)
+#
+# Optional (tuning):
+#   JWT_EXPIRES_IN          — default "7d"
+#   NODE_ENV                — Railway sets this to "production" automatically
