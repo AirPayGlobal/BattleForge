@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WeaponClass {
+  BLADE
+  POLEARM
+  RANGED
+  FORGE_ARTIFACT
+  GAUNTLET
+}
+
+enum WeaponRank {
+  IRON_I
+  BRONZE_II
+  STEEL_III
+  OBSIDIAN_IV
+  VOID_V
+  INFERNO_VI
+  ETERNAL_VII
+}
+
+enum DuelStatus {
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  DECLINED
+  CANCELLED
+}
+
+enum TransactionType {
+  XP_PACK_PURCHASE
+  WEAPON_CRAFT
+  DUEL_WIN
+  DUEL_LOSS
+  QUEST_REWARD
+  DAILY_QUEST
+  REFERRAL
+  TOURNAMENT
+  FORGE_SHIELD
+}
+
+enum NotificationType {
+  CHALLENGE_RECEIVED
+  CHALLENGE_ACCEPTED
+  CHALLENGE_DECLINED
+  DUEL_WON
+  DUEL_LOST
+  WEAPON_WON
+  WEAPON_LOST
+  GAUNTLET_ISSUED
+  GAUNTLET_EARNED
+  QUEST_PROGRESS
+  SYSTEM
+}
+
+model Player {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  xp            Int       @default(0)
+  wins          Int       @default(0)
+  losses        Int       @default(0)
+  winStreak     Int       @default(0) @map("win_streak")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  weapons             Weapon[]
+  challengesSent      Duel[]         @relation("Challenger")
+  challengesReceived  Duel[]         @relation("Defender")
+  duelsWon            Duel[]         @relation("Winner")
+  transactions        Transaction[]
+  notifications       Notification[]
+  gauntletQuest       GauntletQuest?
+
+  @@map("players")
+}
+
+model Weapon {
+  id              String      @id @default(uuid())
+  name            String
+  class           WeaponClass
+  rank            WeaponRank
+  xpCost          Int         @map("xp_cost")
+  wins            Int         @default(0)
+  losses          Int         @default(0)
+  isStaked        Boolean     @default(false) @map("is_staked")
+  isPrintEligible Boolean     @default(false) @map("is_print_eligible")
+  serialNumber    String      @unique @map("serial_number")
+  forgeShield     Boolean     @default(false) @map("forge_shield")
+  forgeShieldExp  DateTime?   @map("forge_shield_exp")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  owner           Player      @relation(fields: [ownerId], references: [id])
+  ownerId         String      @map("owner_id")
+
+  challengerDuels Duel[]      @relation("ChallengerWeapon")
+  defenderDuels   Duel[]      @relation("DefenderWeapon")
+
+  @@map("weapons")
+}
+
+model Duel {
+  id                  String     @id @default(uuid())
+  status              DuelStatus @default(PENDING)
+  gauntletUsed        Boolean    @default(false) @map("gauntlet_used")
+  rounds              Json?
+  winnerId            String?    @map("winner_id")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  completedAt         DateTime?  @map("completed_at")
+
+  challenger          Player     @relation("Challenger", fields: [challengerId], references: [id])
+  challengerId        String     @map("challenger_id")
+
+  defender            Player     @relation("Defender", fields: [defenderId], references: [id])
+  defenderId          String     @map("defender_id")
+
+  winner              Player?    @relation("Winner", fields: [winnerId], references: [id])
+
+  challengerWeapon    Weapon     @relation("ChallengerWeapon", fields: [challengerWeaponId], references: [id])
+  challengerWeaponId  String     @map("challenger_weapon_id")
+
+  defenderWeapon      Weapon     @relation("DefenderWeapon", fields: [defenderWeaponId], references: [id])
+  defenderWeaponId    String     @map("defender_weapon_id")
+
+  @@map("duels")
+}
+
+model GauntletQuest {
+  id           String    @id @default(uuid())
+  currentStage Int       @default(1) @map("current_stage")
+  stageData    Json      @default("{}") @map("stage_data")
+  completedAt  DateTime? @map("completed_at")
+
+  player       Player    @relation(fields: [playerId], references: [id])
+  playerId     String    @unique @map("player_id")
+
+  @@map("gauntlet_quests")
+}
+
+model Transaction {
+  id              String          @id @default(uuid())
+  type            TransactionType
+  xpAmount        Int             @map("xp_amount")
+  usdAmount       Float?          @map("usd_amount")
+  stripePaymentId String?         @map("stripe_payment_id")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  player          Player          @relation(fields: [playerId], references: [id])
+  playerId        String          @map("player_id")
+
+  @@map("transactions")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  message   String
+  read      Boolean          @default(false)
+  data      Json?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  player    Player           @relation(fields: [playerId], references: [id])
+  playerId  String           @map("player_id")
+
+  @@map("notifications")
+}
