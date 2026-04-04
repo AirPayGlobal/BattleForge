@@ -8,6 +8,11 @@ import ArsenalPage from "./pages/ArsenalPage";
 import ForgePage from "./pages/ForgePage";
 import ArenaPage from "./pages/ArenaPage";
 import DuelLobbyPage from "./pages/DuelLobbyPage";
+import ArenaDuelPage from "./pages/ArenaDuelPage";
+import XPStorePage from "./pages/XPStorePage";
+import QuestChainPage from "./pages/QuestChainPage";
+import TournamentPage from "./pages/TournamentPage";
+import BattlePassPage from "./pages/BattlePassPage";
 import Layout from "./components/Layout";
 
 export default function App() {
@@ -43,6 +48,11 @@ export default function App() {
         <Route path="/forge" element={<ForgePage />} />
         <Route path="/arena" element={<ArenaPage />} />
         <Route path="/arena/duel/:id" element={<DuelLobbyPage />} />
+        <Route path="/arena/fight/:id" element={<ArenaDuelPage />} />
+        <Route path="/store" element={<XPStorePage />} />
+        <Route path="/quest" element={<QuestChainPage />} />
+        <Route path="/tournaments" element={<TournamentPage />} />
+        <Route path="/battle-pass" element={<BattlePassPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

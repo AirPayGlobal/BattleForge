@@ -44,6 +44,24 @@ enum TransactionType {
   REFERRAL
   TOURNAMENT
   FORGE_SHIELD
+  BATTLE_PASS
+  GAUNTLET_WIN
+}
+
+enum TournamentStatus {
+  UPCOMING
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RewardType {
+  XP
+  WEAPON_SKIN
+  TITLE
+  BADGE
+  XP_BOOST
 }
 
 enum NotificationType {
@@ -73,12 +91,15 @@ model Player {
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   weapons             Weapon[]
-  challengesSent      Duel[]         @relation("Challenger")
-  challengesReceived  Duel[]         @relation("Defender")
-  duelsWon            Duel[]         @relation("Winner")
+  challengesSent      Duel[]           @relation("Challenger")
+  challengesReceived  Duel[]           @relation("Defender")
+  duelsWon            Duel[]           @relation("Winner")
   transactions        Transaction[]
   notifications       Notification[]
   gauntletQuest       GauntletQuest?
+  gauntlets           Gauntlet[]
+  battlePasses        BattlePass[]
+  tournamentEntries   TournamentEntry[]
 
   @@map("players")
 }
@@ -101,8 +122,9 @@ model Weapon {
   owner           Player      @relation(fields: [ownerId], references: [id])
   ownerId         String      @map("owner_id")
 
-  challengerDuels Duel[]      @relation("ChallengerWeapon")
-  defenderDuels   Duel[]      @relation("DefenderWeapon")
+  challengerDuels    Duel[]            @relation("ChallengerWeapon")
+  defenderDuels      Duel[]            @relation("DefenderWeapon")
+  tournamentEntries  TournamentEntry[]
 
   @@map("weapons")
 }
@@ -157,6 +179,102 @@ model Transaction {
   playerId        String          @map("player_id")
 
   @@map("transactions")
+}
+
+// ─── Phase 2 models ─────────────────────────────────────────────────────────
+
+model Gauntlet {
+  id            String    @id @default(uuid())
+  serialNumber  String    @unique @map("serial_number")
+  questEarned   Boolean   @default(false) @map("quest_earned")
+  cooldownUntil DateTime? @map("cooldown_until")
+  tempToken     Boolean   @default(false) @map("temp_token")
+  tempExpiry    DateTime? @map("temp_expiry")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  owner         Player    @relation(fields: [ownerId], references: [id])
+  ownerId       String    @map("owner_id")
+
+  @@map("gauntlets")
+}
+
+model Season {
+  id            String    @id @default(uuid())
+  name          String
+  startDate     DateTime  @map("start_date")
+  endDate       DateTime  @map("end_date")
+  questChainName String   @map("quest_chain_name")
+  active        Boolean   @default(false)
+
+  tiers         BattlePassTier[]
+  passes        BattlePass[]
+
+  @@map("seasons")
+}
+
+model BattlePassTier {
+  id          String     @id @default(uuid())
+  tier        Int
+  rewardType  RewardType @map("reward_type")
+  rewardData  Json       @map("reward_data")
+  xpRequired  Int        @map("xp_required")
+  isPaid      Boolean    @default(false) @map("is_paid")
+
+  season      Season     @relation(fields: [seasonId], references: [id])
+  seasonId    String     @map("season_id")
+
+  @@map("battle_pass_tiers")
+}
+
+model BattlePass {
+  id          String   @id @default(uuid())
+  purchasedAt DateTime @default(now()) @map("purchased_at")
+  currentTier Int      @default(0) @map("current_tier")
+  xpEarned    Int      @default(0) @map("xp_earned")
+
+  player      Player   @relation(fields: [playerId], references: [id])
+  playerId    String   @map("player_id")
+
+  season      Season   @relation(fields: [seasonId], references: [id])
+  seasonId    String   @map("season_id")
+
+  @@unique([playerId, seasonId])
+  @@map("battle_passes")
+}
+
+model Tournament {
+  id              String            @id @default(uuid())
+  name            String
+  entryWeaponRank String            @map("entry_weapon_rank")
+  startTime       DateTime          @map("start_time")
+  status          TournamentStatus  @default(UPCOMING)
+  maxPlayers      Int               @default(8) @map("max_players")
+  prizePoolData   Json?             @map("prize_pool_data")
+  bracket         Json?
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  entries         TournamentEntry[]
+
+  @@map("tournaments")
+}
+
+model TournamentEntry {
+  id           String     @id @default(uuid())
+  enteredAt    DateTime   @default(now()) @map("entered_at")
+  eliminated   Boolean    @default(false)
+  placement    Int?
+
+  player       Player     @relation(fields: [playerId], references: [id])
+  playerId     String     @map("player_id")
+
+  weapon       Weapon     @relation(fields: [weaponId], references: [id])
+  weaponId     String     @map("weapon_id")
+
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  tournamentId String     @map("tournament_id")
+
+  @@unique([playerId, tournamentId])
+  @@map("tournament_entries")
 }
 
 model Notification {
