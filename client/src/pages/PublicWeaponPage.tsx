@@ -36,7 +36,7 @@ export default function PublicWeaponPage() {
   useEffect(() => {
     if (!id) return;
     axios
-      .get(`${(import.meta as any).env?.VITE_API_URL || "http://localhost:3001"}/api/weapons/${id}/public`)
+      .get(`${import.meta.env.VITE_API_URL || "http://localhost:3001/api"}/weapons/${id}/public`)
       .then((r) => setWeapon(r.data))
       .catch((err) => {
         if (err.response?.status === 404) setNotFound(true);

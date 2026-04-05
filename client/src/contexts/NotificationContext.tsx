@@ -24,7 +24,7 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | null>(null);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const { player, token } = useAuth();
+  const { player } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -32,7 +32,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const fetchNotifications = useCallback(async () => {
-    if (!token) return;
+    if (!localStorage.getItem("bf_token")) return;
     setLoading(true);
     try {
       const { data } = await api.get("/notifications");
@@ -42,13 +42,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
-    if (player && token) {
+    if (player) {
       fetchNotifications();
     }
-  }, [player, token, fetchNotifications]);
+  }, [player, fetchNotifications]);
 
   // Socket.io connection for real-time notifications
   useEffect(() => {

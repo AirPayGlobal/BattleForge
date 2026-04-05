@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import { supabaseAdmin } from "../lib/supabase";
 
 export interface AuthPayload {
   playerId: string;
@@ -10,11 +10,11 @@ export interface AuthRequest extends Request {
   player?: AuthPayload;
 }
 
-export function authenticate(
+export async function authenticate(
   req: AuthRequest,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
     res.status(401).json({ error: "No token provided" });
@@ -22,14 +22,19 @@ export function authenticate(
   }
 
   const token = header.slice(7);
-  try {
-    const payload = jwt.verify(
-      token,
-      process.env.JWT_SECRET!
-    ) as AuthPayload;
-    req.player = payload;
-    next();
-  } catch {
+
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+  if (error || !user) {
     res.status(401).json({ error: "Invalid or expired token" });
+    return;
   }
+
+  req.player = {
+    playerId: user.id,
+    // Username is stored in Supabase user_metadata at registration time
+    username: (user.user_metadata?.username as string) ?? (user.email ?? ""),
+  };
+
+  next();
 }

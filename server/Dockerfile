@@ -38,5 +38,8 @@ USER battleforge
 # Railway injects $PORT at runtime; fall back to 3001 for local Docker runs
 EXPOSE 3001
 
-# Run pending migrations then start the compiled server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# Run schema sync then start the compiled server.
+# prisma db push applies the schema without requiring migration files —
+# safe for initial deployment; switch to `migrate deploy` once you've
+# generated migration files with `prisma migrate dev` locally.
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && node dist/index.js"]

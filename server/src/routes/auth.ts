@@ -1,8 +1,7 @@
-import { Router, Response } from "express";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
+import { supabaseAdmin } from "../lib/supabase";
 import { authenticate, AuthRequest } from "../middleware/auth";
 
 const router = Router();
@@ -23,48 +22,85 @@ const loginSchema = z.object({
 });
 
 // POST /api/auth/register
-router.post("/register", async (req: AuthRequest, res: Response) => {
+// Creates a Supabase Auth user, then a matching Player record in our DB.
+router.post("/register", async (req: Request, res: Response) => {
   try {
     const data = registerSchema.parse(req.body);
 
-    const existing = await prisma.player.findFirst({
-      where: {
-        OR: [{ email: data.email }, { username: data.username }],
-      },
+    // Check username uniqueness in our Player table first
+    const existingUsername = await prisma.player.findUnique({
+      where: { username: data.username },
     });
-    if (existing) {
-      res.status(409).json({
-        error:
-          existing.email === data.email
-            ? "Email already registered"
-            : "Username already taken",
-      });
+    if (existingUsername) {
+      res.status(409).json({ error: "Username already taken" });
       return;
     }
 
-    const passwordHash = await bcrypt.hash(data.password, 12);
+    // Create Supabase Auth user (server-side admin — skips email confirmation)
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { username: data.username },
+    });
+
+    if (authError) {
+      const msg = authError.message.toLowerCase();
+      if (msg.includes("already registered") || msg.includes("already exists")) {
+        res.status(409).json({ error: "Email already registered" });
+      } else {
+        console.error("Supabase createUser error:", authError);
+        res.status(500).json({ error: "Failed to create account" });
+      }
+      return;
+    }
+
+    const supabaseUser = authData.user;
+
+    // Create Player record with the Supabase-assigned UUID as primary key
     const player = await prisma.player.create({
       data: {
+        id: supabaseUser.id,
         username: data.username,
         email: data.email,
-        passwordHash,
         xp: 1000, // starter XP
       },
     });
 
-    const token = jwt.sign(
-      { playerId: player.id, username: player.username },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" as any }
-    );
+    // Sign in immediately after creation so we can return a session token —
+    // avoids the client needing a separate login round-trip.
+    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (sessionError || !sessionData?.session) {
+      // Player created but we couldn't get a session — client should log in
+      res.status(201).json({
+        player: {
+          id: player.id,
+          username: player.username,
+          email: player.email,
+          xp: player.xp,
+          wins: player.wins,
+          losses: player.losses,
+          winStreak: player.winStreak,
+        },
+      });
+      return;
+    }
 
     res.status(201).json({
-      token,
+      token: sessionData.session.access_token,
+      refreshToken: sessionData.session.refresh_token,
       player: {
         id: player.id,
         username: player.username,
         email: player.email,
         xp: player.xp,
+        wins: player.wins,
+        losses: player.losses,
+        winStreak: player.winStreak,
       },
     });
   } catch (err) {
@@ -78,32 +114,32 @@ router.post("/register", async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/auth/login
-router.post("/login", async (req: AuthRequest, res: Response) => {
+router.post("/login", async (req: Request, res: Response) => {
   try {
     const data = loginSchema.parse(req.body);
 
-    const player = await prisma.player.findUnique({
-      where: { email: data.email },
+    const { data: authData, error } = await supabaseAdmin.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
     });
+
+    if (error || !authData.session) {
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+
+    const player = await prisma.player.findUnique({
+      where: { id: authData.user.id },
+    });
+
     if (!player) {
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Player profile not found" });
       return;
     }
-
-    const valid = await bcrypt.compare(data.password, player.passwordHash);
-    if (!valid) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-
-    const token = jwt.sign(
-      { playerId: player.id, username: player.username },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" as any }
-    );
 
     res.json({
-      token,
+      token: authData.session.access_token,
+      refreshToken: authData.session.refresh_token,
       player: {
         id: player.id,
         username: player.username,
@@ -120,6 +156,36 @@ router.post("/login", async (req: AuthRequest, res: Response) => {
       return;
     }
     console.error("Login error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/auth/refresh
+// Exchanges a Supabase refresh_token for a new access_token.
+// The client should call this when the API returns 401 and a refreshToken is stored.
+router.post("/refresh", async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      res.status(400).json({ error: "refreshToken required" });
+      return;
+    }
+
+    const { data, error } = await supabaseAdmin.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+
+    if (error || !data.session) {
+      res.status(401).json({ error: "Invalid or expired refresh token" });
+      return;
+    }
+
+    res.json({
+      token: data.session.access_token,
+      refreshToken: data.session.refresh_token,
+    });
+  } catch (err) {
+    console.error("Refresh error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
