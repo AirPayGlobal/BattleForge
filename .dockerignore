@@ -1,8 +1,9 @@
-# Exclude everything that isn't needed for the server build
-client/
+# Exclude build artifacts and secrets — keep source files
 node_modules/
 server/node_modules/
+client/node_modules/
 server/dist/
+client/dist/
 .git/
 *.env
 *.env.local
