@@ -4,6 +4,7 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import http from "http";
+import path from "path";
 import { Server as SocketServer } from "socket.io";
 import { prisma } from "./lib/prisma";
 import authRoutes from "./routes/auth";
@@ -79,6 +80,16 @@ app.get("/api/health", (_req, res) => {
 // Socket.io setup
 setupSocketHandlers(io);
 setupArenaHandlers(io);
+
+// Serve the React SPA in production — must come AFTER all /api routes
+if (process.env.NODE_ENV === "production") {
+  const publicDir = path.join(__dirname, "../public");
+  app.use(express.static(publicDir));
+  // Catch-all: send index.html for any non-API route so React Router works
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(publicDir, "index.html"));
+  });
+}
 
 // Railway injects PORT; SERVER_PORT is used locally
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3001;

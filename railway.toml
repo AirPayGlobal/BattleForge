@@ -3,8 +3,15 @@
 
 [build]
 # Point Railway at the server Dockerfile inside the monorepo
-builder       = "DOCKERFILE"
+builder        = "DOCKERFILE"
 dockerfilePath = "server/Dockerfile"
+
+# Pass Supabase public keys into the client Vite build at Docker build time.
+# Set these as Variables in the Railway service dashboard — they are safe to
+# expose (publishable/anon keys only, never the service_role key).
+[build.args]
+VITE_SUPABASE_URL             = "${{VITE_SUPABASE_URL}}"
+VITE_SUPABASE_PUBLISHABLE_KEY = "${{VITE_SUPABASE_PUBLISHABLE_KEY}}"
 
 [deploy]
 # Railway sets $PORT automatically — our server reads process.env.PORT
