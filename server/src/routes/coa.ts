@@ -36,7 +36,7 @@ router.get("/:id/coa", authenticate, async (req: AuthRequest, res: Response) => 
       take: 5,
     });
 
-    const publicUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/weapon/${weapon.id}/public`;
+    const publicUrl = `${process.env.CLIENT_URL}/weapon/${weapon.id}/public`;
 
     await generateCoa(
       {

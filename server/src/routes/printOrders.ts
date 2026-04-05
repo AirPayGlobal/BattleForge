@@ -147,8 +147,8 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
         },
       ],
       mode: "payment",
-      success_url: `${process.env.CLIENT_URL || "http://localhost:5173"}/forge-room?print_success=true`,
-      cancel_url: `${process.env.CLIENT_URL || "http://localhost:5173"}/forge-room`,
+      success_url: `${process.env.CLIENT_URL}/forge-room?print_success=true`,
+      cancel_url: `${process.env.CLIENT_URL}/forge-room`,
       customer_email: player?.email,
       shipping_address_collection: { allowed_countries: ["US", "CA", "GB", "AU", "NZ", "DE", "FR", "NL", "JP", "SG"] },
       metadata: {

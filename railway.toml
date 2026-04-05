@@ -2,38 +2,17 @@
 # Docs: https://docs.railway.app/reference/config-as-code
 
 [build]
-# Point Railway at the server Dockerfile inside the monorepo
 builder        = "DOCKERFILE"
 dockerfilePath = "server/Dockerfile"
 
-# Pass Supabase public keys into the client Vite build at Docker build time.
-# Set these as Variables in the Railway service dashboard — they are safe to
-# expose (publishable/anon keys only, never the service_role key).
+# Pass Supabase public keys into the Vite client build.
+# Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in Railway Variables.
 [build.args]
 VITE_SUPABASE_URL             = "${{VITE_SUPABASE_URL}}"
 VITE_SUPABASE_PUBLISHABLE_KEY = "${{VITE_SUPABASE_PUBLISHABLE_KEY}}"
 
 [deploy]
-# Railway sets $PORT automatically — our server reads process.env.PORT
-healthcheckPath    = "/api/health"
-healthcheckTimeout = 120         # seconds before healthcheck is considered failed
-restartPolicyType  = "ON_FAILURE"
+healthcheckPath         = "/api/health"
+healthcheckTimeout      = 120
+restartPolicyType       = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-
-# ─── Environment variable reference ───────────────────────────────────────────
-# Set these in the Railway dashboard under your service → Variables.
-# DATABASE_URL is injected automatically when you add a PostgreSQL plugin.
-#
-# Required:
-#   DATABASE_URL            — Supabase direct connection string (Settings → Database → Connection string)
-#   SUPABASE_URL            — https://your-project-ref.supabase.co
-#   SUPABASE_SERVICE_ROLE_KEY — service_role key from Supabase Settings → API
-#   CLIENT_URL              — your production frontend URL (e.g. https://battleforge.vercel.app)
-#
-# Optional (Stripe):
-#   STRIPE_SECRET_KEY       — sk_live_... or sk_test_...
-#   STRIPE_WEBHOOK_SECRET   — whsec_... (from Stripe webhook dashboard)
-#
-# Optional (tuning):
-#   JWT_EXPIRES_IN          — default "7d"
-#   NODE_ENV                — Railway sets this to "production" automatically

@@ -81,18 +81,15 @@ app.get("/api/health", (_req, res) => {
 setupSocketHandlers(io);
 setupArenaHandlers(io);
 
-// Serve the React SPA in production — must come AFTER all /api routes
-if (process.env.NODE_ENV === "production") {
-  const publicDir = path.join(__dirname, "../public");
-  app.use(express.static(publicDir));
-  // Catch-all: send index.html for any non-API route so React Router works
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(publicDir, "index.html"));
-  });
-}
+// Serve React SPA — must come AFTER all /api routes
+const publicDir = path.join(__dirname, "../public");
+app.use(express.static(publicDir));
+// Catch-all: return index.html so React Router handles client-side navigation
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(publicDir, "index.html"));
+});
 
-// Railway injects PORT; SERVER_PORT is used locally
-const PORT = process.env.PORT || process.env.SERVER_PORT || 3001;
+const PORT = process.env.PORT || 3001;
 
 server.listen(PORT, () => {
   console.log(`⚔️  BattleForge server running on port ${PORT}`);

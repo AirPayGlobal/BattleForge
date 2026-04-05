@@ -70,8 +70,8 @@ router.post("/xp-pack", authenticate, async (req: AuthRequest, res: Response) =>
         },
       ],
       mode: "payment",
-      success_url: `${process.env.CLIENT_URL || "http://localhost:5173"}/store?success=true`,
-      cancel_url: `${process.env.CLIENT_URL || "http://localhost:5173"}/store?cancelled=true`,
+      success_url: `${process.env.CLIENT_URL}/store?success=true`,
+      cancel_url: `${process.env.CLIENT_URL}/store?cancelled=true`,
       customer_email: player?.email,
       metadata: {
         playerId: req.player!.playerId,
@@ -148,8 +148,8 @@ router.post("/battle-pass", authenticate, async (req: AuthRequest, res: Response
         },
       ],
       mode: "payment",
-      success_url: `${process.env.CLIENT_URL || "http://localhost:5173"}/battle-pass?success=true`,
-      cancel_url: `${process.env.CLIENT_URL || "http://localhost:5173"}/battle-pass?cancelled=true`,
+      success_url: `${process.env.CLIENT_URL}/battle-pass?success=true`,
+      cancel_url: `${process.env.CLIENT_URL}/battle-pass?cancelled=true`,
       metadata: {
         playerId: req.player!.playerId,
         type: "BATTLE_PASS",
