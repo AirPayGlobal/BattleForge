@@ -1,7 +1,6 @@
 # ─── Stage 1: Build ───────────────────────────────────────────────────────────
-# NOTE: Railway builds from the repo root, so all COPY paths are relative to
-# the monorepo root, not to server/. To build locally:
-#   docker build -f server/Dockerfile -t battleforge-server .
+# Railway uses the repo root as the build context; all COPY paths are
+# relative to the monorepo root.
 FROM node:20-alpine AS builder
 
 WORKDIR /app
