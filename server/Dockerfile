@@ -24,6 +24,9 @@ RUN npm prune --omit=dev
 # ─── Stage 2: Production image ────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
+# Prisma requires OpenSSL on Alpine
+RUN apk add --no-cache openssl
+
 # Security: run as non-root
 RUN addgroup -S battleforge && adduser -S battleforge -G battleforge
 
