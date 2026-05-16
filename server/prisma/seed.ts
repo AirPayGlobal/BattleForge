@@ -1,4 +1,4 @@
-import { PrismaClient, WeaponClass, WeaponRank } from "@prisma/client";
+import { PrismaClient, WeaponClass, WeaponRank, CosmeticType, NpcTier } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 
 const prisma = new PrismaClient();
@@ -73,6 +73,15 @@ async function ensureSupabaseUsers() {
   return ids;
 }
 
+const CHARACTERS = [
+  { name: "Ironclad",    description: "The unyielding defender, forged in the fires of battle",     isDefault: true  },
+  { name: "Shadowblade", description: "A ghost in the arena, striking before you see the shadow",   isDefault: false },
+  { name: "Stoneforged", description: "Carved from the mountain itself, immovable in combat",       isDefault: false },
+  { name: "Voidwalker",  description: "Touched by the void, wielding power beyond the mortal realm", isDefault: false },
+  { name: "Embercrest",  description: "Born of flame, their passion is as fierce as their blade",   isDefault: false },
+  { name: "Frostmantle", description: "Cold, calculated, and utterly ruthless",                     isDefault: false },
+];
+
 async function main() {
   console.log("⚔️  Seeding BattleForge database...");
 
@@ -143,6 +152,91 @@ async function main() {
   });
 
   console.log("✓ Created sample notifications");
+
+  // ─── Characters ─────────────────────────────────────────────────────────────
+  const characterMap = new Map<string, string>(); // name → id
+
+  for (const ch of CHARACTERS) {
+    const record = await prisma.character.upsert({
+      where: { name: ch.name },
+      update: { description: ch.description, isDefault: ch.isDefault },
+      create: ch,
+    });
+    characterMap.set(ch.name, record.id);
+  }
+  console.log(`✓ Upserted ${CHARACTERS.length} characters`);
+
+  // ─── Character Cosmetics ─────────────────────────────────────────────────────
+  const cosmeticSeeds: Array<{
+    name: string; type: CosmeticType; description: string;
+    xpPrice?: number; usdPrice?: number; characterName?: string;
+  }> = [
+    // Per-character skins & accessories
+    ...CHARACTERS.flatMap((ch) => [
+      {
+        name: `${ch.name} Prestige Skin`,
+        type: CosmeticType.SKIN,
+        description: `Prestige skin for the ${ch.name} character`,
+        xpPrice: 5000,
+        characterName: ch.name,
+      },
+      {
+        name: `${ch.name} Battle Crest`,
+        type: CosmeticType.ACCESSORY,
+        description: `Battle crest accessory for the ${ch.name} character`,
+        xpPrice: 2000,
+        characterName: ch.name,
+      },
+    ]),
+    // Universal mods
+    { name: "Flame Aura",   type: CosmeticType.MOD, description: "Surround yourself in living flame", xpPrice: 3000 },
+    { name: "Void Shimmer", type: CosmeticType.MOD, description: "Phase in and out of reality",        usdPrice: 4.99 },
+    { name: "Iron Glow",    type: CosmeticType.MOD, description: "Radiate the power of forged iron",   xpPrice: 2500 },
+  ];
+
+  for (const c of cosmeticSeeds) {
+    const characterId = c.characterName ? characterMap.get(c.characterName) ?? null : null;
+    const existing = await prisma.characterCosmetic.findFirst({ where: { name: c.name } });
+    if (!existing) {
+      await prisma.characterCosmetic.create({
+        data: { name: c.name, type: c.type, description: c.description, xpPrice: c.xpPrice ?? null, usdPrice: c.usdPrice ?? null, characterId },
+      });
+    } else {
+      await prisma.characterCosmetic.update({
+        where: { id: existing.id },
+        data: { type: c.type, description: c.description, xpPrice: c.xpPrice ?? null, usdPrice: c.usdPrice ?? null, characterId },
+      });
+    }
+  }
+  console.log(`✓ Upserted ${cosmeticSeeds.length} character cosmetics`);
+
+  // ─── NPCs ────────────────────────────────────────────────────────────────────
+  const npcSeeds: Array<{ name: string; tier: NpcTier; description: string; characterName: string }> = [
+    // BEGINNER
+    { name: "Training Dummy",  tier: NpcTier.BEGINNER, description: "A stationary practice target with no real combat ability",        characterName: "Ironclad"    },
+    { name: "Rusty Guardsman", tier: NpcTier.BEGINNER, description: "An old guard whose best days are long behind him",                 characterName: "Stoneforged" },
+    { name: "Recruit Blaine",  tier: NpcTier.BEGINNER, description: "Fresh out of training camp, eager but unskilled",                 characterName: "Embercrest"  },
+    // WARRIOR
+    { name: "Arena Veteran",   tier: NpcTier.WARRIOR,  description: "A seasoned fighter who has survived countless battles",           characterName: "Shadowblade" },
+    { name: "Sergeant Varn",   tier: NpcTier.WARRIOR,  description: "A disciplined officer who fights with precision and experience",  characterName: "Ironclad"    },
+    { name: "Champion Kira",   tier: NpcTier.WARRIOR,  description: "A regional champion who fights with calculating coldness",        characterName: "Frostmantle" },
+    // ELITE
+    { name: "The Warlord",       tier: NpcTier.ELITE, description: "A fearsome warlord who commands the battlefield",                 characterName: "Voidwalker" },
+    { name: "Iron Maiden",       tier: NpcTier.ELITE, description: "An indomitable warrior clad in impenetrable armor",               characterName: "Ironclad"   },
+    { name: "Eternal Sentinel",  tier: NpcTier.ELITE, description: "An ageless guardian powered by void energy",                      characterName: "Voidwalker" },
+  ];
+
+  for (const n of npcSeeds) {
+    const characterId = characterMap.get(n.characterName);
+    if (!characterId) continue;
+    await prisma.npc.upsert({
+      where: { name: n.name },
+      update: { tier: n.tier, description: n.description, characterId },
+      create: { name: n.name, tier: n.tier, description: n.description, characterId },
+    });
+  }
+  console.log(`✓ Upserted ${npcSeeds.length} NPCs`);
+
   console.log("\n⚔️  Seed complete! Test accounts (password: password123):");
   console.log("   ironviper@battleforge.test");
   console.log("   stormblade@battleforge.test");

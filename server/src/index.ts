@@ -24,6 +24,9 @@ import mintRoutes from "./routes/mint";
 import printOrderRoutes from "./routes/printOrders";
 import printRunLimitRoutes from "./routes/printRunLimits";
 import coaRoutes from "./routes/coa";
+import characterRoutes from "./routes/characters";
+import cosmeticRoutes from "./routes/cosmetics";
+import npcArenaRoutes from "./routes/npcArena";
 import { setupSocketHandlers } from "./lib/socket";
 import { setupArenaHandlers } from "./lib/combat";
 
@@ -64,6 +67,11 @@ app.use("/api/weapons", mintRoutes);       // /api/weapons/:id/mint, /minted/lis
 app.use("/api/weapons", coaRoutes);        // /api/weapons/:id/coa
 app.use("/api/print-orders", printOrderRoutes);
 app.use("/api/print-run-limits", printRunLimitRoutes);
+// Character and cosmetic routes are mounted at /api since they contain paths like
+// /characters (list), /players/character (set), /cosmetics (store), /players/cosmetics (owned), etc.
+app.use("/api", characterRoutes);
+app.use("/api", cosmeticRoutes);
+app.use("/api/npcs", npcArenaRoutes);
 
 // Stripe webhook (raw body required)
 app.use(

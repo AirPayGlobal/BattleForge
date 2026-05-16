@@ -27,6 +27,52 @@ export type NotificationType =
   | "QUEST_PROGRESS"
   | "SYSTEM";
 
+export interface Character {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl?: string;
+  isDefault: boolean;
+}
+
+export interface CharacterCosmetic {
+  id: string;
+  name: string;
+  type: 'SKIN' | 'ACCESSORY' | 'MOD';
+  description: string;
+  imageUrl?: string;
+  xpPrice?: number;
+  usdPrice?: number;
+  characterId?: string;
+  character?: Character;
+}
+
+export interface PlayerCosmetic {
+  id: string;
+  cosmeticId: string;
+  equippedSlot?: 'SKIN' | 'ACCESSORY' | 'MOD';
+  acquiredAt: string;
+  cosmetic: CharacterCosmetic;
+}
+
+export interface Npc {
+  id: string;
+  name: string;
+  tier: 'BEGINNER' | 'WARRIOR' | 'ELITE';
+  description: string;
+  imageUrl?: string;
+  character: Character;
+}
+
+export interface NpcBattle {
+  id: string;
+  result: 'WIN' | 'LOSS';
+  xpEarned: number;
+  rounds?: unknown;
+  completedAt: string;
+  npc: Npc;
+}
+
 export interface Player {
   id: string;
   username: string;
@@ -38,6 +84,8 @@ export interface Player {
   weaponCount?: number;
   unreadNotifications?: number;
   createdAt?: string;
+  character?: Character;
+  ownedCosmetics?: PlayerCosmetic[];
 }
 
 export interface Weapon {

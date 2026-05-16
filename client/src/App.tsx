@@ -15,6 +15,9 @@ import TournamentPage from "./pages/TournamentPage";
 import BattlePassPage from "./pages/BattlePassPage";
 import ForgeRoomPage from "./pages/ForgeRoomPage";
 import PublicWeaponPage from "./pages/PublicWeaponPage";
+import CharacterPage from "./pages/CharacterPage";
+import CosmeticStorePage from "./pages/CosmeticStorePage";
+import NpcArenaPage from "./pages/NpcArenaPage";
 import Layout from "./components/Layout";
 
 export default function App() {
@@ -56,6 +59,9 @@ export default function App() {
         <Route path="/tournaments" element={<TournamentPage />} />
         <Route path="/battle-pass" element={<BattlePassPage />} />
         <Route path="/forge-room" element={<ForgeRoomPage />} />
+        <Route path="/character" element={<CharacterPage />} />
+        <Route path="/store/cosmetics" element={<CosmeticStorePage />} />
+        <Route path="/arena/npc" element={<NpcArenaPage />} />
       </Route>
       <Route path="/weapon/:id/public" element={<PublicWeaponPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

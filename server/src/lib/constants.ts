@@ -55,3 +55,9 @@ export const PRINT_COSTS = {
 
 export const FORGE_SHIELD_COOLDOWN_DAYS = 7;
 export const GAUNTLET_COOLDOWN_HOURS = 72;
+
+export const NPC_XP_REWARDS = {
+  BEGINNER: 50,
+  WARRIOR: 75,
+  ELITE: 100,
+} as const;
