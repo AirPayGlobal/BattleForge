@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
+import FighterSprite from "../components/FighterSprite";
 
 type Action = "attack" | "special" | "block";
 type FightPhase =
@@ -82,9 +83,11 @@ export default function NpcFightPage() {
   const location = useLocation();
   const { player, refreshPlayer } = useAuth();
 
-  const locationState = location.state as { weaponId?: string; npcName?: string } | null;
+  const locationState = location.state as { weaponId?: string; npcName?: string; npcCharacter?: string } | null;
   const weaponId = locationState?.weaponId ?? "";
   const npcName = locationState?.npcName ?? "UNKNOWN";
+  const npcCharacter = locationState?.npcCharacter ?? "Ironclad";
+  const playerCharacter = player?.character?.name ?? "Ironclad";
 
   const [phase, setPhase] = useState<FightPhase>("vs-intro");
   const [currentRound, setCurrentRound] = useState(0);
@@ -257,11 +260,11 @@ export default function NpcFightPage() {
             initial={{ opacity: 0, x: -80 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="flex-1 text-center"
+            className="flex-1 flex flex-col items-center"
           >
-            <div className="text-7xl mb-4">⚔️</div>
+            <FighterSprite character={playerCharacter} side="left" action="idle" size={180} />
             <p
-              className="font-display text-2xl tracking-widest uppercase"
+              className="font-display text-2xl tracking-widest uppercase mt-4"
               style={{ color: "#00FFFF", textShadow: "0 0 20px rgba(0,255,255,0.6)" }}
             >
               {player?.username ?? "YOU"}
@@ -293,11 +296,11 @@ export default function NpcFightPage() {
             initial={{ opacity: 0, x: 80 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="flex-1 text-center"
+            className="flex-1 flex flex-col items-center"
           >
-            <div className="text-7xl mb-4">💀</div>
+            <FighterSprite character={npcCharacter} side="right" action="idle" size={180} />
             <p
-              className="font-display text-2xl tracking-widest uppercase"
+              className="font-display text-2xl tracking-widest uppercase mt-4"
               style={{ color: "#FF3D6B", textShadow: "0 0 20px rgba(255,61,107,0.6)" }}
             >
               {npcName}
@@ -322,6 +325,22 @@ export default function NpcFightPage() {
           transition={{ type: "spring", stiffness: 200, damping: 20 }}
           className="text-center max-w-md w-full"
         >
+          {/* Fighter sprites on match-end */}
+          <div className="flex items-end justify-center gap-8 mb-6">
+            <FighterSprite
+              character={playerCharacter}
+              side="left"
+              action={won ? "victory" : "defeat"}
+              size={160}
+            />
+            <FighterSprite
+              character={npcCharacter}
+              side="right"
+              action={won ? "defeat" : "victory"}
+              size={160}
+            />
+          </div>
+
           <motion.h1
             animate={{
               textShadow: won
@@ -477,33 +496,30 @@ export default function NpcFightPage() {
           <motion.div
             animate={shakePlayer ? { x: [-8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
             transition={{ duration: 0.35 }}
-            className="flex-1 flex flex-col items-center"
+            className="flex-1 flex flex-col items-center relative"
           >
-            <div
-              className="w-28 h-28 sm:w-36 sm:h-36 rounded-full flex items-center justify-center text-6xl sm:text-7xl relative"
-              style={{
-                background: "radial-gradient(circle, rgba(0,255,255,0.15) 0%, transparent 70%)",
-                border: "2px solid rgba(0,255,255,0.3)",
-              }}
-            >
-              ⚔️
-              {/* Floating damage */}
-              <AnimatePresence>
-                {floatingDmg?.player && (
-                  <motion.div
-                    key="player-dmg"
-                    initial={{ opacity: 1, y: 0 }}
-                    animate={{ opacity: 0, y: -40 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="absolute -top-4 left-1/2 -translate-x-1/2 font-display text-xl"
-                    style={{ color: "#FF3D6B" }}
-                  >
-                    -{floatingDmg.player}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            <FighterSprite
+              character={playerCharacter}
+              side="left"
+              action={shakePlayer ? "hit" : selectedAction === "block" ? "block" : selectedAction ? "attack" : "idle"}
+              size={220}
+            />
+            {/* Floating damage */}
+            <AnimatePresence>
+              {floatingDmg?.player && (
+                <motion.div
+                  key="player-dmg"
+                  initial={{ opacity: 1, y: 0 }}
+                  animate={{ opacity: 0, y: -40 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="absolute top-0 left-1/2 -translate-x-1/2 font-display text-xl"
+                  style={{ color: "#FF3D6B" }}
+                >
+                  -{floatingDmg.player}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* VS divider */}
@@ -515,33 +531,30 @@ export default function NpcFightPage() {
           <motion.div
             animate={shakeNpc ? { x: [-8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
             transition={{ duration: 0.35 }}
-            className="flex-1 flex flex-col items-center"
+            className="flex-1 flex flex-col items-center relative"
           >
-            <div
-              className="w-28 h-28 sm:w-36 sm:h-36 rounded-full flex items-center justify-center text-6xl sm:text-7xl relative"
-              style={{
-                background: "radial-gradient(circle, rgba(255,61,107,0.15) 0%, transparent 70%)",
-                border: "2px solid rgba(255,61,107,0.3)",
-              }}
-            >
-              💀
-              {/* Floating damage */}
-              <AnimatePresence>
-                {floatingDmg?.npc && (
-                  <motion.div
-                    key="npc-dmg"
-                    initial={{ opacity: 1, y: 0 }}
-                    animate={{ opacity: 0, y: -40 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="absolute -top-4 left-1/2 -translate-x-1/2 font-display text-xl"
-                    style={{ color: "#FF3D6B" }}
-                  >
-                    -{floatingDmg.npc}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            <FighterSprite
+              character={npcCharacter}
+              side="right"
+              action={shakeNpc ? "hit" : "idle"}
+              size={220}
+            />
+            {/* Floating damage */}
+            <AnimatePresence>
+              {floatingDmg?.npc && (
+                <motion.div
+                  key="npc-dmg"
+                  initial={{ opacity: 1, y: 0 }}
+                  animate={{ opacity: 0, y: -40 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="absolute top-0 left-1/2 -translate-x-1/2 font-display text-xl"
+                  style={{ color: "#FF3D6B" }}
+                >
+                  -{floatingDmg.npc}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* Round overlays */}

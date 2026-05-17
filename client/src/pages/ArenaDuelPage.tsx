@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import { Duel, RANK_COLORS, CLASS_ICONS } from "../lib/types";
+import FighterSprite from "../components/FighterSprite";
 
 type Action = "attack" | "special" | "block";
 
@@ -71,6 +72,8 @@ export default function ArenaDuelPage() {
   const opponentName = isChallenger ? duel?.defender?.username : duel?.challenger?.username;
   const myWeapon = isChallenger ? duel?.challengerWeapon : duel?.defenderWeapon;
   const oppWeapon = isChallenger ? duel?.defenderWeapon : duel?.challengerWeapon;
+  const playerCharacter = player?.character?.name ?? "Ironclad";
+  const opponentCharacter = "Shadowblade"; // Default for PvP opponents
 
   // Load duel info
   useEffect(() => {
@@ -189,6 +192,21 @@ export default function ArenaDuelPage() {
         className="max-w-lg mx-auto space-y-6 text-center"
       >
         <div className={`card border-2 py-10 ${won ? "border-victory-green" : "border-danger-red"}`}>
+          {/* Fighter sprites on match end */}
+          <div className="flex items-end justify-center gap-6 mb-6">
+            <FighterSprite
+              character={playerCharacter}
+              side="left"
+              action={won ? "victory" : "defeat"}
+              size={140}
+            />
+            <FighterSprite
+              character={opponentCharacter}
+              side="right"
+              action={won ? "defeat" : "victory"}
+              size={140}
+            />
+          </div>
           <motion.h1
             initial={{ y: -20 }}
             animate={{ y: 0 }}
@@ -243,6 +261,23 @@ export default function ArenaDuelPage() {
             {r}
           </div>
         ))}
+      </div>
+
+      {/* Fighter sprites */}
+      <div className="flex items-end justify-center gap-4 py-2">
+        <FighterSprite
+          character={playerCharacter}
+          side="left"
+          action={phase === "fighting" ? "idle" : "idle"}
+          size={160}
+        />
+        <div className="font-display text-2xl pb-8" style={{ color: "rgba(255,255,255,0.3)" }}>VS</div>
+        <FighterSprite
+          character={opponentCharacter}
+          side="right"
+          action="idle"
+          size={160}
+        />
       </div>
 
       {/* Fighter cards */}
