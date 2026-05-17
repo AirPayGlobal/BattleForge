@@ -128,13 +128,23 @@ router.post("/login", async (req: Request, res: Response) => {
       return;
     }
 
-    const player = await prisma.player.findUnique({
+    let player = await prisma.player.findUnique({
       where: { id: authData.user.id },
     });
 
+    // Supabase auth exists but DB row was lost (e.g. after a schema migration).
+    // Recreate the player profile so the account stays accessible.
     if (!player) {
-      res.status(401).json({ error: "Player profile not found" });
-      return;
+      const email = authData.user.email ?? data.email;
+      const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
+      const username = `${baseUsername}_${Math.floor(Math.random() * 9000) + 1000}`;
+      player = await prisma.player.create({
+        data: {
+          id: authData.user.id,
+          email,
+          username,
+        },
+      });
     }
 
     res.json({
