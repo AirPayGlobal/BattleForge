@@ -705,94 +705,74 @@ export default function NpcFightPage() {
           </div>
         </div>
 
-        {/* ─── Fighter Area ─── */}
-        <div className="flex-1 flex items-center justify-center relative px-4">
-          {/* Player fighter */}
-          <motion.div
-            animate={shakePlayer ? { x: [-8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
-            transition={{ duration: 0.35 }}
-            className="flex-1 flex flex-col items-center relative"
-          >
-            <FighterSprite
-              character={playerCharacter}
-              side="left"
-              action={shakePlayer ? "hit" : selectedMove ?? highlightedMove ?? "idle"}
-              size={220}
-            />
-            <AnimatePresence>
-              {floatingDmg?.player && (
-                <motion.div
-                  key="player-dmg"
-                  initial={{ opacity: 1, y: 0 }}
-                  animate={{ opacity: 0, y: -40 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.8 }}
-                  className="absolute top-0 left-1/2 -translate-x-1/2 font-display text-xl"
-                  style={{ color: "#FF3D6B" }}
-                >
-                  -{floatingDmg.player}
-                </motion.div>
-              )}
-            </AnimatePresence>
-            {/* Player hit particles */}
-            {playerParticles.map((p) => (
+        {/* ─── Fighter Area (3D Arena) ─── */}
+        <div className="flex-1 relative" style={{ minHeight: "260px" }}>
+          <Arena3D
+            playerCharacter={playerCharacter}
+            npcCharacter={npcCharacter}
+            playerAction={shakePlayer ? "hit" : selectedMove ?? highlightedMove ?? "idle"}
+            npcAction={shakeNpc ? "hit" : "idle"}
+            tierColor="#FF3D6B"
+            shakeIntensity={isShaking ? 0.8 : 0}
+          />
+
+          {/* Floating damage numbers — HTML overlays on top of canvas */}
+          <AnimatePresence>
+            {floatingDmg?.player && (
               <motion.div
-                key={p.id}
-                initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-                animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="absolute w-2 h-2 rounded-full pointer-events-none z-20"
-                style={{ background: p.color, top: "50%", left: "50%" }}
-              />
-            ))}
-          </motion.div>
-
-          {/* VS divider */}
-          <div className="px-4 font-display text-2xl" style={{ color: "rgba(255,255,255,0.2)" }}>
-            VS
-          </div>
-
-          {/* NPC fighter */}
-          <motion.div
-            animate={shakeNpc ? { x: [-8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
-            transition={{ duration: 0.35 }}
-            className="flex-1 flex flex-col items-center relative"
-          >
-            <FighterSprite
-              character={npcCharacter}
-              side="right"
-              action={shakeNpc ? "hit" : "idle"}
-              size={220}
-            />
-            <AnimatePresence>
-              {floatingDmg?.npc && (
-                <motion.div
-                  key="npc-dmg"
-                  initial={{ opacity: 1, y: 0 }}
-                  animate={{ opacity: 0, y: -40 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.8 }}
-                  className="absolute top-0 left-1/2 -translate-x-1/2 font-display text-xl"
-                  style={{ color: "#FF3D6B" }}
-                >
-                  -{floatingDmg.npc}
-                </motion.div>
-              )}
-            </AnimatePresence>
-            {/* NPC hit particles */}
-            {npcParticles.map((p) => (
+                key="player-dmg"
+                initial={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 0, y: -40 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute font-display text-xl pointer-events-none"
+                style={{ color: "#FF3D6B", top: "30%", left: "25%", transform: "translateX(-50%)" }}
+              >
+                -{floatingDmg.player}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {floatingDmg?.npc && (
               <motion.div
-                key={p.id}
-                initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-                animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="absolute w-2 h-2 rounded-full pointer-events-none z-20"
-                style={{ background: p.color, top: "50%", left: "50%" }}
-              />
-            ))}
-          </motion.div>
+                key="npc-dmg"
+                initial={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 0, y: -40 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute font-display text-xl pointer-events-none"
+                style={{ color: "#FF9500", top: "30%", left: "75%", transform: "translateX(-50%)" }}
+              >
+                -{floatingDmg.npc}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* Combo overlay — z-30, below action buttons z-index conceptually but above fighters */}
+          {/* Player hit particles */}
+          {playerParticles.map((p) => (
+            <motion.div
+              key={p.id}
+              initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+              animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="absolute w-2 h-2 rounded-full pointer-events-none z-20"
+              style={{ background: p.color, top: "50%", left: "25%" }}
+            />
+          ))}
+
+          {/* NPC hit particles */}
+          {npcParticles.map((p) => (
+            <motion.div
+              key={p.id}
+              initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+              animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="absolute w-2 h-2 rounded-full pointer-events-none z-20"
+              style={{ background: p.color, top: "50%", left: "75%" }}
+            />
+          ))}
+
+          {/* Combo overlay */}
           <AnimatePresence>
             {activeCombo && (
               <motion.div
@@ -824,7 +804,7 @@ export default function NpcFightPage() {
                 initial={{ opacity: 0, scale: 1.5 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="absolute inset-0 flex items-center justify-center"
+                className="absolute inset-0 flex items-center justify-center z-20"
                 style={{ background: "rgba(0,0,0,0.7)" }}
               >
                 <div className="text-center">
@@ -851,7 +831,7 @@ export default function NpcFightPage() {
                 initial={{ opacity: 0, scale: 1.2 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 flex items-center justify-center"
+                className="absolute inset-0 flex items-center justify-center z-20"
                 style={{ background: "rgba(0,0,0,0.7)" }}
               >
                 <div className="text-center">
