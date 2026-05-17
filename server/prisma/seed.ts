@@ -87,7 +87,9 @@ async function main() {
 
   const supabaseIds = await ensureSupabaseUsers();
 
-  // Clear existing data (order matters for FK constraints)
+  // Clear existing data (order matters for FK constraints — dependents first)
+  await prisma.npcBattle.deleteMany();
+  await prisma.playerCosmetic.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.duel.deleteMany();
