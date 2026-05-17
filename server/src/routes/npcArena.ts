@@ -7,7 +7,7 @@ import { NPC_XP_REWARDS } from "../lib/constants";
 const router = Router();
 
 const battleSchema = z.object({
-  weaponId: z.string().uuid(),
+  weaponId: z.string().uuid().optional(),
 });
 
 // GET /api/npcs — list all NPCs with their tier and character
@@ -40,21 +40,21 @@ router.post("/:id/battle", authenticate, async (req: AuthRequest, res: Response)
       return;
     }
 
-    // Validate player owns the weapon and it's not staked
-    const weapon = await prisma.weapon.findUnique({
-      where: { id: weaponId },
-    });
-    if (!weapon) {
-      res.status(404).json({ error: "Weapon not found" });
-      return;
-    }
-    if (weapon.ownerId !== playerId) {
-      res.status(403).json({ error: "You do not own this weapon" });
-      return;
-    }
-    if (weapon.isStaked) {
-      res.status(400).json({ error: "This weapon is currently staked in a duel" });
-      return;
+    // Validate weapon if provided (NPC fights don't require a weapon)
+    if (weaponId) {
+      const weapon = await prisma.weapon.findUnique({ where: { id: weaponId } });
+      if (!weapon) {
+        res.status(404).json({ error: "Weapon not found" });
+        return;
+      }
+      if (weapon.ownerId !== playerId) {
+        res.status(403).json({ error: "You do not own this weapon" });
+        return;
+      }
+      if (weapon.isStaked) {
+        res.status(400).json({ error: "This weapon is currently staked in a duel" });
+        return;
+      }
     }
 
     // Determine win rate by tier
@@ -73,41 +73,16 @@ router.post("/:id/battle", authenticate, async (req: AuthRequest, res: Response)
     const result = won ? "WIN" : "LOSS";
 
     // Persist: create battle record, award XP, log transaction
+    const battleData = { rounds, playerId, npcId, ...(weaponId ? { weaponId } : {}) };
+
     if (won) {
       await prisma.$transaction([
-        prisma.npcBattle.create({
-          data: {
-            result: "WIN",
-            xpEarned,
-            rounds,
-            playerId,
-            npcId,
-            weaponId,
-          },
-        }),
-        prisma.player.update({
-          where: { id: playerId },
-          data: { xp: { increment: xpEarned } },
-        }),
-        prisma.transaction.create({
-          data: {
-            type: "NPC_BATTLE_WIN",
-            xpAmount: xpEarned,
-            playerId,
-          },
-        }),
+        prisma.npcBattle.create({ data: { result: "WIN", xpEarned, ...battleData } }),
+        prisma.player.update({ where: { id: playerId }, data: { xp: { increment: xpEarned } } }),
+        prisma.transaction.create({ data: { type: "NPC_BATTLE_WIN", xpAmount: xpEarned, playerId } }),
       ]);
     } else {
-      await prisma.npcBattle.create({
-        data: {
-          result: "LOSS",
-          xpEarned: 0,
-          rounds,
-          playerId,
-          npcId,
-          weaponId,
-        },
-      });
+      await prisma.npcBattle.create({ data: { result: "LOSS", xpEarned: 0, ...battleData } });
     }
 
     res.json({ result, xpEarned, rounds });

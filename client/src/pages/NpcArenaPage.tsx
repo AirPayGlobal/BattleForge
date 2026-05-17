@@ -62,11 +62,22 @@ export default function NpcArenaPage() {
   };
 
   const handleBattle = () => {
-    if (!battleTarget || !selectedWeapon) return;
-    // Navigate to the animated fight page with weapon selection
+    if (!battleTarget) return;
     navigate(`/arena/npc/fight/${battleTarget.id}`, {
-      state: { weaponId: selectedWeapon, npcName: battleTarget.name },
+      state: { weaponId: selectedWeapon || undefined, npcName: battleTarget.name },
     });
+  };
+
+  const startFight = (npc: Npc) => {
+    if (weapons.length === 0) {
+      // No weapons — go straight to fight without weapon selection
+      navigate(`/arena/npc/fight/${npc.id}`, {
+        state: { npcName: npc.name },
+      });
+    } else {
+      setBattleTarget(npc);
+      setSelectedWeapon(weapons[0]?.id ?? "");
+    }
   };
 
   if (loading) {
@@ -193,11 +204,7 @@ export default function NpcArenaPage() {
                   <motion.button
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => {
-                      setBattleTarget(npc);
-                      setSelectedWeapon(weapons[0]?.id ?? "");
-                    }}
-                    disabled={weapons.length === 0}
+                    onClick={() => startFight(npc)}
                     className="w-full py-3 rounded-xl font-display tracking-[0.2em] text-lg uppercase transition-all"
                     style={{
                       background: `${TIER_COLORS[tierParam]}20`,
@@ -271,11 +278,7 @@ export default function NpcArenaPage() {
                     </p>
 
                     <button
-                      onClick={() => {
-                        setBattleTarget(npc);
-                        setSelectedWeapon(weapons[0]?.id ?? "");
-                      }}
-                      disabled={weapons.length === 0}
+                      onClick={() => startFight(npc)}
                       className="btn-primary w-full text-sm py-2"
                     >
                       Battle
@@ -357,7 +360,6 @@ export default function NpcArenaPage() {
                 </button>
                 <button
                   onClick={handleBattle}
-                  disabled={!selectedWeapon}
                   className="btn-primary flex-1"
                 >
                   FIGHT

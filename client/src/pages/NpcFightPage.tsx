@@ -106,16 +106,12 @@ export default function NpcFightPage() {
 
   // Fire battle API on mount
   useEffect(() => {
-    if (!npcId || !weaponId || battleFired.current) return;
-    if (!locationState?.weaponId) {
-      toast.error("No weapon selected — returning to arena.");
-      navigate("/arena");
-      return;
-    }
+    if (!npcId || battleFired.current) return;
     battleFired.current = true;
 
+    const body = weaponId ? { weaponId } : {};
     api
-      .post(`/npcs/${npcId}/battle`, { weaponId })
+      .post(`/npcs/${npcId}/battle`, body)
       .then(({ data }) => {
         simRoundsRef.current = simulateRounds(data.result);
         // Store result for later

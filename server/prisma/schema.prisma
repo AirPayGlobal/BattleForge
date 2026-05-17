@@ -456,8 +456,8 @@ model NpcBattle {
   npc         Npc             @relation(fields: [npcId], references: [id])
   npcId       String          @map("npc_id")
 
-  weapon      Weapon          @relation(fields: [weaponId], references: [id])
-  weaponId    String          @map("weapon_id")
+  weapon      Weapon?         @relation(fields: [weaponId], references: [id])
+  weaponId    String?         @map("weapon_id")
 
   @@map("npc_battles")
 }
