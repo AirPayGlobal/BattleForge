@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import FighterSprite from "../components/FighterSprite";
+import Arena3D from "../components/Arena3D";
 import ControlsLegend from "../components/ControlsLegend";
 import { useFightControls } from "../hooks/useFightControls";
 import type { Move } from "../hooks/useFightControls";
