@@ -27,7 +27,7 @@ import coaRoutes from "./routes/coa";
 import characterRoutes from "./routes/characters";
 import cosmeticRoutes from "./routes/cosmetics";
 import npcArenaRoutes from "./routes/npcArena";
-import { setupSocketHandlers } from "./lib/socket";
+import { setupSocketHandlers, setupMatchmakingHandlers } from "./lib/socket";
 import { setupArenaHandlers } from "./lib/combat";
 
 const app = express();
@@ -88,6 +88,7 @@ app.get("/api/health", (_req, res) => {
 // Socket.io setup
 setupSocketHandlers(io);
 setupArenaHandlers(io);
+setupMatchmakingHandlers(io);
 
 // Serve React SPA — must come AFTER all /api routes
 const publicDir = path.join(__dirname, "../public");

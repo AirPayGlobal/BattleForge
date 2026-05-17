@@ -4,12 +4,10 @@ import { useNotifications } from "../contexts/NotificationContext";
 
 const navItems = [
   { to: "/arena", label: "Arena" },
-  { to: "/arena/npc", label: "NPC Arena" },
   { to: "/forge", label: "Forge" },
   { to: "/arsenal", label: "Arsenal" },
   { to: "/character", label: "My Character" },
   { to: "/store/cosmetics", label: "Cosmetic Store" },
-  { to: "/tournaments", label: "Tournaments" },
   { to: "/quest", label: "Quest" },
   { to: "/forge-room", label: "Mint" },
   { to: "/store", label: "Store" },

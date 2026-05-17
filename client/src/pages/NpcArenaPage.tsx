@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
@@ -21,34 +22,22 @@ const TIER_COLORS: Record<NpcTier, string> = {
 
 const TIER_ORDER: NpcTier[] = ["BEGINNER", "WARRIOR", "ELITE"];
 
-interface BattleResult {
-  result: "WIN" | "LOSS";
-  xpEarned: number;
-  rounds: Array<{
-    round: number;
-    playerAction: string;
-    npcAction: string;
-    playerDmg: number;
-    npcDmg: number;
-    winner: string;
-  }> | null;
-  npcName: string;
-}
-
 export default function NpcArenaPage() {
-  const { player, refreshPlayer } = useAuth();
+  useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tierParam = searchParams.get("tier") as NpcTier | null;
+
   const [npcs, setNpcs] = useState<Npc[]>([]);
   const [weapons, setWeapons] = useState<Weapon[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedTiers, setExpandedTiers] = useState<Set<NpcTier>>(new Set(["BEGINNER"]));
+  const [expandedTiers, setExpandedTiers] = useState<Set<NpcTier>>(
+    new Set(tierParam ? [tierParam] : ["BEGINNER"])
+  );
 
   // Weapon selector modal state
   const [battleTarget, setBattleTarget] = useState<Npc | null>(null);
   const [selectedWeapon, setSelectedWeapon] = useState<string>("");
-  const [battling, setBattling] = useState(false);
-
-  // Result display
-  const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -72,29 +61,12 @@ export default function NpcArenaPage() {
     });
   };
 
-  const handleBattle = async () => {
+  const handleBattle = () => {
     if (!battleTarget || !selectedWeapon) return;
-    setBattling(true);
-    try {
-      const { data } = await api.post(`/npcs/${battleTarget.id}/battle`, {
-        weaponId: selectedWeapon,
-      });
-      setBattleResult({
-        result: data.result,
-        xpEarned: data.xpEarned,
-        rounds: data.rounds,
-        npcName: battleTarget.name,
-      });
-      setBattleTarget(null);
-      setSelectedWeapon("");
-      if (data.result === "WIN") {
-        await refreshPlayer();
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Battle failed");
-    } finally {
-      setBattling(false);
-    }
+    // Navigate to the animated fight page with weapon selection
+    navigate(`/arena/npc/fight/${battleTarget.id}`, {
+      state: { weaponId: selectedWeapon, npcName: battleTarget.name },
+    });
   };
 
   if (loading) {
@@ -106,35 +78,143 @@ export default function NpcArenaPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      style={tierParam ? { minHeight: "100vh", background: "radial-gradient(ellipse at center, #1a0a0a 0%, #0a0005 60%, #000 100%)" } : {}}
+    >
       {/* Header */}
-      <div>
-        <h1 className="font-display text-3xl text-primary-text">NPC ARENA</h1>
-        <p className="text-secondary-text font-ui text-sm">
-          Battle AI opponents to earn XP. No weapon wagering — pure combat.
-        </p>
-      </div>
+      {tierParam ? (
+        <div className="pt-4">
+          <button
+            onClick={() => navigate("/arena")}
+            className="flex items-center gap-2 font-ui text-sm mb-6 transition-colors"
+            style={{ color: "rgba(255,255,255,0.4)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Arena
+          </button>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <p
+              className="font-ui text-xs uppercase tracking-[0.4em] mb-2"
+              style={{ color: TIER_COLORS[tierParam] }}
+            >
+              {TIER_LABELS[tierParam]} Tier
+            </p>
+            <h1
+              className="font-display text-5xl tracking-widest uppercase"
+              style={{
+                color: "#fff",
+                textShadow: `0 0 20px ${TIER_COLORS[tierParam]}, 0 0 60px ${TIER_COLORS[tierParam]}60`,
+              }}
+            >
+              SELECT YOUR OPPONENT
+            </h1>
+          </motion.div>
+        </div>
+      ) : (
+        <div>
+          <h1 className="font-display text-3xl text-primary-text">NPC ARENA</h1>
+          <p className="text-secondary-text font-ui text-sm">
+            Battle AI opponents to earn XP. No weapon wagering — pure combat.
+          </p>
+        </div>
+      )}
 
-      {/* XP Reward reference */}
-      <div className="grid grid-cols-3 gap-3">
-        {TIER_ORDER.map((tier) => {
-          const rewards: Record<NpcTier, number> = { BEGINNER: 50, WARRIOR: 75, ELITE: 100 };
-          return (
-            <div key={tier} className="card flex flex-col items-center py-4">
-              <span
-                className="font-ui font-bold text-xs uppercase tracking-wider mb-1"
-                style={{ color: TIER_COLORS[tier] }}
+      {/* XP Reward reference — only show when no tier filter */}
+      {!tierParam && (
+        <div className="grid grid-cols-3 gap-3">
+          {TIER_ORDER.map((tier) => {
+            const rewards: Record<NpcTier, number> = { BEGINNER: 50, WARRIOR: 75, ELITE: 100 };
+            return (
+              <div key={tier} className="card flex flex-col items-center py-4">
+                <span
+                  className="font-ui font-bold text-xs uppercase tracking-wider mb-1"
+                  style={{ color: TIER_COLORS[tier] }}
+                >
+                  {TIER_LABELS[tier]}
+                </span>
+                <span className="font-display text-xl text-storm-gold">+{rewards[tier]} XP</span>
+                <span className="text-[10px] text-secondary-text font-ui">per win</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* When tier param is set: show dramatic grid of that tier's NPCs */}
+      {tierParam ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-12">
+          {npcs
+            .filter((n) => n.tier === tierParam)
+            .map((npc, i) => (
+              <motion.div
+                key={npc.id}
+                initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: i * 0.08 }}
+                className="rounded-2xl border overflow-hidden flex flex-col"
+                style={{
+                  background: `linear-gradient(135deg, #1a0a0a 0%, #0d0005 100%)`,
+                  borderColor: `${TIER_COLORS[tierParam]}40`,
+                  boxShadow: `0 0 20px ${TIER_COLORS[tierParam]}20`,
+                }}
               >
-                {TIER_LABELS[tier]}
-              </span>
-              <span className="font-display text-xl text-storm-gold">+{rewards[tier]} XP</span>
-              <span className="text-[10px] text-secondary-text font-ui">per win</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Tier Sections */}
+                <div
+                  className="w-full h-28 flex items-center justify-center text-6xl"
+                  style={{ background: `radial-gradient(circle, ${TIER_COLORS[tierParam]}20 0%, transparent 70%)` }}
+                >
+                  💀
+                </div>
+                <div className="p-5 flex flex-col flex-1">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h3 className="font-display text-xl text-white tracking-wider">{npc.name.toUpperCase()}</h3>
+                    <span
+                      className="text-[10px] font-ui font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border flex-shrink-0"
+                      style={{
+                        color: TIER_COLORS[tierParam],
+                        borderColor: `${TIER_COLORS[tierParam]}40`,
+                        backgroundColor: `${TIER_COLORS[tierParam]}15`,
+                      }}
+                    >
+                      {TIER_LABELS[tierParam]}
+                    </span>
+                  </div>
+                  <p className="text-sm font-ui flex-1 mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    {npc.description}
+                  </p>
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => {
+                      setBattleTarget(npc);
+                      setSelectedWeapon(weapons[0]?.id ?? "");
+                    }}
+                    disabled={weapons.length === 0}
+                    className="w-full py-3 rounded-xl font-display tracking-[0.2em] text-lg uppercase transition-all"
+                    style={{
+                      background: `${TIER_COLORS[tierParam]}20`,
+                      border: `2px solid ${TIER_COLORS[tierParam]}80`,
+                      color: TIER_COLORS[tierParam],
+                      textShadow: `0 0 10px ${TIER_COLORS[tierParam]}60`,
+                    }}
+                  >
+                    FIGHT
+                  </motion.button>
+                </div>
+              </motion.div>
+            ))}
+        </div>
+      ) : (
+      /* Tier Sections — original collapsible view */
+      <>
       {TIER_ORDER.map((tier) => {
         const tierNpcs = npcs.filter((n) => n.tier === tier);
         const isExpanded = expandedTiers.has(tier);
@@ -207,6 +287,8 @@ export default function NpcArenaPage() {
           </div>
         );
       })}
+      </>
+      )}
 
       {/* Weapon Selector Modal */}
       <AnimatePresence>
@@ -275,17 +357,10 @@ export default function NpcArenaPage() {
                 </button>
                 <button
                   onClick={handleBattle}
-                  disabled={!selectedWeapon || battling}
+                  disabled={!selectedWeapon}
                   className="btn-primary flex-1"
                 >
-                  {battling ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      Fighting...
-                    </span>
-                  ) : (
-                    "Confirm Battle"
-                  )}
+                  FIGHT
                 </button>
               </div>
             </motion.div>
@@ -293,76 +368,6 @@ export default function NpcArenaPage() {
         )}
       </AnimatePresence>
 
-      {/* Battle Result Modal */}
-      <AnimatePresence>
-        {battleResult && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card-surface border border-card-border rounded-2xl p-6 w-full max-w-md"
-            >
-              {/* Result header */}
-              <div className={`text-center mb-6 ${battleResult.result === "WIN" ? "text-victory-green" : "text-danger-red"}`}>
-                <div className="text-6xl mb-3">
-                  {battleResult.result === "WIN" ? "🏆" : "💀"}
-                </div>
-                <h2 className="font-display text-4xl">
-                  {battleResult.result === "WIN" ? "VICTORY!" : "DEFEAT"}
-                </h2>
-                <p className="font-ui text-sm text-secondary-text mt-1">
-                  vs {battleResult.npcName}
-                </p>
-              </div>
-
-              {battleResult.result === "WIN" && battleResult.xpEarned > 0 && (
-                <div className="bg-storm-gold/10 border border-storm-gold/30 rounded-xl px-4 py-3 mb-5 text-center">
-                  <p className="font-display text-3xl text-storm-gold">+{battleResult.xpEarned} XP</p>
-                  <p className="text-xs text-secondary-text font-ui">earned</p>
-                </div>
-              )}
-
-              {/* Round breakdown */}
-              {battleResult.rounds && battleResult.rounds.length > 0 && (
-                <div className="mb-5">
-                  <h3 className="font-ui text-xs uppercase tracking-wider text-secondary-text mb-3">Round Breakdown</h3>
-                  <div className="space-y-2">
-                    {battleResult.rounds.map((r) => (
-                      <div
-                        key={r.round}
-                        className="flex items-center justify-between bg-deep-navy/60 rounded-lg px-3 py-2 text-xs font-ui"
-                      >
-                        <span className="text-secondary-text">Round {r.round}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-arc-cyan">{r.playerAction}</span>
-                          <span className="text-secondary-text">vs</span>
-                          <span className="text-danger-red">{r.npcAction}</span>
-                        </div>
-                        <span className={r.winner === "player" ? "text-victory-green font-bold" : r.winner === "npc" ? "text-danger-red" : "text-secondary-text"}>
-                          {r.winner === "player" ? "You win" : r.winner === "npc" ? "NPC wins" : "Draw"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={() => setBattleResult(null)}
-                className="btn-primary w-full"
-              >
-                Continue
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -11,13 +11,14 @@ import DuelLobbyPage from "./pages/DuelLobbyPage";
 import ArenaDuelPage from "./pages/ArenaDuelPage";
 import XPStorePage from "./pages/XPStorePage";
 import QuestChainPage from "./pages/QuestChainPage";
-import TournamentPage from "./pages/TournamentPage";
 import BattlePassPage from "./pages/BattlePassPage";
 import ForgeRoomPage from "./pages/ForgeRoomPage";
 import PublicWeaponPage from "./pages/PublicWeaponPage";
 import CharacterPage from "./pages/CharacterPage";
 import CosmeticStorePage from "./pages/CosmeticStorePage";
 import NpcArenaPage from "./pages/NpcArenaPage";
+import NpcFightPage from "./pages/NpcFightPage";
+import ArenaMatchmakingPage from "./pages/ArenaMatchmakingPage";
 import Layout from "./components/Layout";
 
 export default function App() {
@@ -56,12 +57,14 @@ export default function App() {
         <Route path="/arena/fight/:id" element={<ArenaDuelPage />} />
         <Route path="/store" element={<XPStorePage />} />
         <Route path="/quest" element={<QuestChainPage />} />
-        <Route path="/tournaments" element={<TournamentPage />} />
+        <Route path="/tournaments" element={<Navigate to="/arena" replace />} />
         <Route path="/battle-pass" element={<BattlePassPage />} />
         <Route path="/forge-room" element={<ForgeRoomPage />} />
         <Route path="/character" element={<CharacterPage />} />
         <Route path="/store/cosmetics" element={<CosmeticStorePage />} />
         <Route path="/arena/npc" element={<NpcArenaPage />} />
+        <Route path="/arena/npc/fight/:npcId" element={<NpcFightPage />} />
+        <Route path="/arena/matchmaking" element={<ArenaMatchmakingPage />} />
       </Route>
       <Route path="/weapon/:id/public" element={<PublicWeaponPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
