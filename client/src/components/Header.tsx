@@ -4,6 +4,7 @@ import { useNotifications } from "../contexts/NotificationContext";
 
 const navItems = [
   { to: "/arena", label: "Arena" },
+  { to: "/tournaments", label: "Tournaments" },
   { to: "/leaderboard", label: "Ranks" },
   { to: "/forge", label: "Forge" },
   { to: "/arsenal", label: "Arsenal" },

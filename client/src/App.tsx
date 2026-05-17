@@ -20,6 +20,7 @@ import NpcArenaPage from "./pages/NpcArenaPage";
 import NpcFightPage from "./pages/NpcFightPage";
 import ArenaMatchmakingPage from "./pages/ArenaMatchmakingPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import TournamentPage from "./pages/TournamentPage";
 import Layout from "./components/Layout";
 
 export default function App() {
@@ -58,7 +59,7 @@ export default function App() {
         <Route path="/arena/fight/:id" element={<ArenaDuelPage />} />
         <Route path="/store" element={<XPStorePage />} />
         <Route path="/quest" element={<QuestChainPage />} />
-        <Route path="/tournaments" element={<Navigate to="/arena" replace />} />
+        <Route path="/tournaments" element={<TournamentPage />} />
         <Route path="/battle-pass" element={<BattlePassPage />} />
         <Route path="/forge-room" element={<ForgeRoomPage />} />
         <Route path="/character" element={<CharacterPage />} />

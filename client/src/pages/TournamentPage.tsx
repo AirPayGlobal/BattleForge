@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../lib/api";
 import { RANK_LABELS, RANK_COLORS, WeaponRank } from "../lib/types";
@@ -64,6 +65,7 @@ function BracketView({ bracket }: { bracket: any }) {
 }
 
 export default function TournamentPage() {
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selected, setSelected] = useState<TournamentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,11 +101,26 @@ export default function TournamentPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-3xl text-primary-text">TOURNAMENTS</h1>
-        <p className="text-secondary-text font-ui text-sm">
-          Single-elimination bracket tournaments. Stake your weapon. Win glory.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="font-display text-3xl text-primary-text">TOURNAMENTS</h1>
+          <p className="text-secondary-text font-ui text-sm">
+            Single-elimination bracket tournaments. Stake your weapon. Win glory.
+          </p>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
+          onClick={() => navigate("/arena/npc?tier=WARRIOR")}
+          className="px-5 py-2.5 rounded-xl font-display tracking-widest uppercase text-sm flex-shrink-0"
+          style={{
+            background: "rgba(0,191,255,0.12)",
+            border: "2px solid rgba(0,191,255,0.4)",
+            color: "#00BFFF",
+          }}
+        >
+          ⚡ Quick NPC Tournament
+        </motion.button>
       </div>
 
       {loading ? (
