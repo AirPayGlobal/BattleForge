@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import { Npc, Weapon, RANK_COLORS } from "../lib/types";
+import FighterSprite from "../components/FighterSprite";
 
 type NpcTier = "BEGINNER" | "WARRIOR" | "ELITE";
 
@@ -163,10 +164,10 @@ export default function NpcArenaPage() {
                 }}
               >
                 <div
-                  className="w-full h-28 flex items-center justify-center text-6xl"
+                  className="w-full h-36 flex items-end justify-center pb-2"
                   style={{ background: `radial-gradient(circle, ${TIER_COLORS[tierParam]}20 0%, transparent 70%)` }}
                 >
-                  💀
+                  <FighterSprite character={npc.character?.name ?? "Ironclad"} side="right" action="idle" size={130} />
                 </div>
                 <div className="p-5 flex flex-col flex-1">
                   <div className="flex items-start justify-between gap-2 mb-2">
