@@ -4,10 +4,13 @@
 
 import { useEffect } from "react";
 
+type SpriteAction = "idle" | "attack" | "hit" | "block" | "victory" | "defeat"
+  | "punch" | "kick" | "weapon-strike" | "jump" | "slide";
+
 interface FighterSpriteProps {
   character: string;        // character name, case-insensitive
   side: "left" | "right";  // left = player (faces right), right = NPC (faces left, mirrored)
-  action: "idle" | "attack" | "hit" | "block" | "victory" | "defeat";
+  action: SpriteAction;
   size?: number;            // height in px, default 200
 }
 
@@ -42,6 +45,37 @@ const KEYFRAME_CSS = `
   0% { transform: rotate(0deg) translateY(0); }
   100% { transform: rotate(-30deg) translateY(20px); }
 }
+@keyframes punch-anim {
+  0% { transform: translateX(0) rotate(0deg); }
+  20% { transform: translateX(30px) rotate(-5deg); }
+  50% { transform: translateX(15px) rotate(-2deg); }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+@keyframes kick-anim {
+  0% { transform: translateX(0) skewX(0deg); }
+  25% { transform: translateX(20px) skewX(-8deg); }
+  60% { transform: translateX(10px) skewX(-4deg); }
+  100% { transform: translateX(0) skewX(0deg); }
+}
+@keyframes jump-anim {
+  0%   { transform: translateY(0); }
+  40%  { transform: translateY(-35px); }
+  70%  { transform: translateY(-20px); }
+  100% { transform: translateY(0); }
+}
+@keyframes slide-anim {
+  0%   { transform: translateY(0) scaleY(1); }
+  30%  { transform: translateY(15px) scaleY(0.7); }
+  70%  { transform: translateY(10px) scaleY(0.75); }
+  100% { transform: translateY(0) scaleY(1); }
+}
+@keyframes weapon-strike-anim {
+  0%   { transform: translateX(0) rotate(0deg); }
+  15%  { transform: translateX(0) rotate(-15deg); }
+  40%  { transform: translateX(45px) rotate(10deg); }
+  70%  { transform: translateX(20px) rotate(5deg); }
+  100% { transform: translateX(0) rotate(0deg); }
+}
 `;
 
 const actionAnimation: Record<string, string> = {
@@ -51,6 +85,11 @@ const actionAnimation: Record<string, string> = {
   block: "block-stance 0.3s ease-in forwards",
   victory: "victory-jump 0.8s ease-in-out infinite",
   defeat: "defeat-slump 0.5s ease-out forwards",
+  punch: "punch-anim 0.4s ease-out forwards",
+  kick: "kick-anim 0.4s ease-out forwards",
+  jump: "jump-anim 0.5s ease-out forwards",
+  slide: "slide-anim 0.4s ease-out forwards",
+  "weapon-strike": "weapon-strike-anim 0.6s ease-out forwards",
 };
 
 // ─── IRONCLAD ──────────────────────────────────────────────────────────────

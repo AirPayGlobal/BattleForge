@@ -7,8 +7,49 @@ import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import { Duel, RANK_COLORS, CLASS_ICONS } from "../lib/types";
 import FighterSprite from "../components/FighterSprite";
+import ControlsLegend from "../components/ControlsLegend";
+import { useFightControls } from "../hooks/useFightControls";
+import type { Move } from "../hooks/useFightControls";
 
 type Action = "attack" | "special" | "block";
+
+function moveToServerAction(move: Move): Action {
+  if (move === "weapon-strike") return "special";
+  if (move === "jump" || move === "block") return "block";
+  return "attack";
+}
+
+const MOVE_COLORS: Record<Move, string> = {
+  punch: "#FF3D6B",
+  kick: "#FF6B35",
+  "weapon-strike": "#7B2FFF",
+  jump: "#00BFFF",
+  slide: "#FF9500",
+  block: "#00BFFF",
+};
+
+const MOVE_LABELS: Record<Move, string> = {
+  punch: "⚡ PUNCH",
+  kick: "🦵 KICK",
+  "weapon-strike": "⚔ STRIKE",
+  jump: "↑ JUMP",
+  slide: "↓ SLIDE",
+  block: "🛡 BLOCK",
+};
+
+const MOVE_KEYS: Record<Move, string> = {
+  punch: "A",
+  kick: "S",
+  "weapon-strike": "D",
+  jump: "W",
+  slide: "X",
+  block: "SPC",
+};
+
+const MOVE_GRID: Move[][] = [
+  ["punch", "kick", "weapon-strike"],
+  ["jump", "slide", "block"],
+];
 
 interface RoundResult {
   round: number;
@@ -29,6 +70,7 @@ interface MatchResult {
   finalHP: { challenger: number; defender: number };
 }
 
+// Keep for round-result display labels
 const ACTION_LABELS: Record<Action, string> = {
   attack: "⚔ Attack",
   special: "✨ Special",
@@ -60,6 +102,8 @@ export default function ArenaDuelPage() {
   const [defenderHP, setDefenderHP] = useState(100);
   const [roundsWon, setRoundsWon] = useState({ challenger: 0, defender: 0 });
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
+  const [selectedMove, setSelectedMove] = useState<Move | null>(null);
+  const [highlightedMove, setHighlightedMove] = useState<Move | null>(null);
   const [actionConfirmed, setActionConfirmed] = useState(false);
   const [timeLeft, setTimeLeft] = useState(5);
   const [lastRound, setLastRound] = useState<RoundResult | null>(null);
@@ -73,12 +117,11 @@ export default function ArenaDuelPage() {
   const myWeapon = isChallenger ? duel?.challengerWeapon : duel?.defenderWeapon;
   const oppWeapon = isChallenger ? duel?.defenderWeapon : duel?.challengerWeapon;
   const playerCharacter = player?.character?.name ?? "Ironclad";
-  const opponentCharacter = "Shadowblade"; // Default for PvP opponents
+  const opponentCharacter = "Shadowblade";
 
   // Load duel info
   useEffect(() => {
     if (!duelId) return;
-    // Fetch pending duels to find this one
     api.get("/duels/history").then(({ data }) => {
       const found = data.find((d: Duel) => d.id === duelId);
       if (found) setDuel(found);
@@ -114,10 +157,11 @@ export default function ArenaDuelPage() {
       setDefenderHP(dHP);
       setPhase("fighting");
       setSelectedAction(null);
+      setSelectedMove(null);
+      setHighlightedMove(null);
       setActionConfirmed(false);
       setLastRound(null);
 
-      // Countdown timer
       const secs = Math.ceil(timeLimit / 1000);
       setTimeLeft(secs);
       if (timerRef.current) clearInterval(timerRef.current);
@@ -174,6 +218,25 @@ export default function ArenaDuelPage() {
     socketRef.current?.emit("player:action", { duelId, playerId: player?.id, action });
   };
 
+  const handleMove = (move: Move) => {
+    if (actionConfirmed || phase !== "fighting") return;
+    setSelectedMove(move);
+    handleAction(moveToServerAction(move));
+  };
+
+  // Controls hook — keyboard + gamepad
+  const { isGamepadConnected, gamepadName, highlightedMove: controllerHighlight } = useFightControls(
+    phase === "fighting" && !actionConfirmed,
+    (move) => {
+      if (phase === "fighting" && !actionConfirmed) handleMove(move);
+    }
+  );
+
+  // Sync highlighted move from controller
+  useEffect(() => {
+    setHighlightedMove(controllerHighlight);
+  }, [controllerHighlight]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -192,7 +255,6 @@ export default function ArenaDuelPage() {
         className="max-w-lg mx-auto space-y-6 text-center"
       >
         <div className={`card border-2 py-10 ${won ? "border-victory-green" : "border-danger-red"}`}>
-          {/* Fighter sprites on match end */}
           <div className="flex items-end justify-center gap-6 mb-6">
             <FighterSprite
               character={playerCharacter}
@@ -244,7 +306,10 @@ export default function ArenaDuelPage() {
 
   // ─── Arena Layout ─────────────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="max-w-2xl mx-auto space-y-4 relative">
+      {/* Controls legend */}
+      <ControlsLegend visible={phase === "fighting"} mode={isGamepadConnected ? "gamepad" : "keyboard"} />
+
       {/* Round indicator */}
       <div className="flex items-center justify-center gap-3">
         {[1, 2, 3].map((r) => (
@@ -268,7 +333,7 @@ export default function ArenaDuelPage() {
         <FighterSprite
           character={playerCharacter}
           side="left"
-          action={phase === "fighting" ? "idle" : "idle"}
+          action={phase === "fighting" ? (selectedMove ?? highlightedMove ?? "idle") : "idle"}
           size={160}
         />
         <div className="font-display text-2xl pb-8" style={{ color: "rgba(255,255,255,0.3)" }}>VS</div>
@@ -358,37 +423,74 @@ export default function ArenaDuelPage() {
               </div>
             </div>
 
+            {/* Gamepad indicator */}
+            {isGamepadConnected && (
+              <div className="text-center">
+                <span className="font-ui text-xs text-arc-cyan opacity-70">
+                  🎮 {gamepadName || "Controller"} connected
+                </span>
+              </div>
+            )}
+
             {actionConfirmed ? (
               <div className="card text-center py-6">
                 <p className="font-display text-xl text-victory-green">ACTION LOCKED IN</p>
                 <p className="text-secondary-text font-ui text-sm mt-1">Waiting for opponent...</p>
-                <div className="mt-3 inline-block px-4 py-2 rounded-lg" style={{ backgroundColor: `${ACTION_COLORS[selectedAction!]}20`, color: ACTION_COLORS[selectedAction!] }}>
-                  <span className="font-ui font-bold">{ACTION_LABELS[selectedAction!]}</span>
-                </div>
+                {selectedMove && (
+                  <div
+                    className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg"
+                    style={{
+                      backgroundColor: `${MOVE_COLORS[selectedMove]}20`,
+                      color: MOVE_COLORS[selectedMove],
+                    }}
+                  >
+                    <span className="font-ui font-bold">{MOVE_LABELS[selectedMove]}</span>
+                    {selectedAction && (
+                      <span className="text-xs opacity-60">{ACTION_LABELS[selectedAction]}</span>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="card">
-                <p className="font-ui text-xs uppercase tracking-wider text-secondary-text text-center mb-4">Choose Your Action</p>
-                <div className="grid grid-cols-3 gap-3">
-                  {(["attack", "special", "block"] as Action[]).map((action) => (
-                    <button
-                      key={action}
-                      onClick={() => handleAction(action)}
-                      className={`py-4 rounded-xl border-2 font-ui font-bold uppercase tracking-wider text-sm transition-all ${
-                        selectedAction === action
-                          ? "scale-105"
-                          : "border-card-border hover:border-current hover:scale-[1.02]"
-                      }`}
-                      style={selectedAction === action ? {
-                        borderColor: ACTION_COLORS[action],
-                        color: ACTION_COLORS[action],
-                        backgroundColor: `${ACTION_COLORS[action]}20`,
-                      } : { color: "#3A5080" }}
-                    >
-                      {ACTION_LABELS[action]}
-                    </button>
-                  ))}
-                </div>
+              <div className="card space-y-2">
+                <p className="font-ui text-xs uppercase tracking-wider text-secondary-text text-center">Choose Your Move</p>
+                {MOVE_GRID.map((row, rowIdx) => (
+                  <div key={rowIdx} className="grid grid-cols-3 gap-2">
+                    {row.map((move) => {
+                      const isHighlighted = highlightedMove === move;
+                      const color = MOVE_COLORS[move];
+                      return (
+                        <button
+                          key={move}
+                          onClick={() => handleMove(move)}
+                          className="py-3 rounded-xl font-ui font-bold uppercase tracking-wider text-xs relative overflow-hidden transition-all"
+                          style={{
+                            background: isHighlighted ? `${color}28` : `${color}0f`,
+                            border: isHighlighted
+                              ? `2px solid ${color}`
+                              : `2px solid ${color}40`,
+                            color,
+                            boxShadow: isHighlighted ? `0 0 14px ${color}40` : "none",
+                            transition: "all 0.1s ease",
+                          }}
+                        >
+                          {/* Key badge */}
+                          <span
+                            className="absolute top-1 right-1 text-[9px] font-mono px-1 rounded"
+                            style={{
+                              background: "rgba(255,255,255,0.07)",
+                              color: "rgba(255,255,255,0.3)",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                            }}
+                          >
+                            {MOVE_KEYS[move]}
+                          </span>
+                          {MOVE_LABELS[move]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             )}
           </motion.div>

@@ -5,8 +5,11 @@ import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import FighterSprite from "../components/FighterSprite";
+import ControlsLegend from "../components/ControlsLegend";
+import { useFightControls } from "../hooks/useFightControls";
+import type { Move } from "../hooks/useFightControls";
 
-type Action = "attack" | "special" | "block";
+type ServerAction = "attack" | "special" | "block";
 type FightPhase =
   | "vs-intro"
   | "round-start"
@@ -14,16 +17,37 @@ type FightPhase =
   | "round-result"
   | "match-end";
 
-const ACTION_LABELS: Record<Action, string> = {
-  attack: "⚔ ATTACK",
-  special: "✨ SPECIAL",
+function moveToServerAction(move: Move): ServerAction {
+  if (move === "weapon-strike") return "special";
+  if (move === "jump" || move === "block") return "block";
+  return "attack";
+}
+
+const MOVE_COLORS: Record<Move, string> = {
+  punch: "#FF3D6B",
+  kick: "#FF6B35",
+  "weapon-strike": "#7B2FFF",
+  jump: "#00BFFF",
+  slide: "#FF9500",
+  block: "#00BFFF",
+};
+
+const MOVE_LABELS: Record<Move, string> = {
+  punch: "⚡ PUNCH",
+  kick: "🦵 KICK",
+  "weapon-strike": "⚔ STRIKE",
+  jump: "↑ JUMP",
+  slide: "↓ SLIDE",
   block: "🛡 BLOCK",
 };
 
-const ACTION_COLORS: Record<Action, string> = {
-  attack: "#FF3D6B",
-  special: "#7B2FFF",
-  block: "#00BFFF",
+const MOVE_KEYS: Record<Move, string> = {
+  punch: "A",
+  kick: "S",
+  "weapon-strike": "D",
+  jump: "W",
+  slide: "X",
+  block: "SPC",
 };
 
 const HP_COLOR = (hp: number) =>
@@ -34,15 +58,14 @@ interface SimRound {
   playerWins: boolean;
   playerDmgTaken: number;
   npcDmgTaken: number;
-  action: Action;
+  action: ServerAction;
 }
 
 function simulateRounds(result: "WIN" | "LOSS"): SimRound[] {
   const rand = (min: number, max: number) =>
     Math.floor(Math.random() * (max - min + 1)) + min;
-  const actions: Action[] = ["attack", "special", "block"];
+  const actions: ServerAction[] = ["attack", "special", "block"];
 
-  // Decide round split
   const twoZero = Math.random() < 0.5;
   const rounds: SimRound[] = [];
 
@@ -77,6 +100,11 @@ function simulateRounds(result: "WIN" | "LOSS"): SimRound[] {
   return rounds;
 }
 
+const MOVE_GRID: Move[][] = [
+  ["punch", "kick", "weapon-strike"],
+  ["jump", "slide", "block"],
+];
+
 export default function NpcFightPage() {
   const { npcId } = useParams<{ npcId: string }>();
   const navigate = useNavigate();
@@ -96,7 +124,8 @@ export default function NpcFightPage() {
   const [playerRoundsWon, setPlayerRoundsWon] = useState(0);
   const [npcRoundsWon, setNpcRoundsWon] = useState(0);
   const [timeLeft, setTimeLeft] = useState(5);
-  const [selectedAction, setSelectedAction] = useState<Action | null>(null);
+  const [selectedMove, setSelectedMove] = useState<Move | null>(null);
+  const [highlightedMove, setHighlightedMove] = useState<Move | null>(null);
   const [shakePlayer, setShakePlayer] = useState(false);
   const [shakeNpc, setShakeNpc] = useState(false);
   const [floatingDmg, setFloatingDmg] = useState<{ player?: number; npc?: number } | null>(null);
@@ -118,7 +147,6 @@ export default function NpcFightPage() {
       .post(`/npcs/${npcId}/battle`, body)
       .then(({ data }) => {
         simRoundsRef.current = simulateRounds(data.result);
-        // Store result for later
         setMatchResult({ result: data.result, xpEarned: data.xpEarned ?? 0 });
         if (data.result === "WIN") refreshPlayer();
       })
@@ -127,7 +155,7 @@ export default function NpcFightPage() {
       });
   }, [npcId, weaponId]);
 
-  // VS Intro → Round 1 after 2s
+  // VS Intro → Round 1 after 2.2s
   useEffect(() => {
     if (phase !== "vs-intro") return;
     const t = setTimeout(() => {
@@ -143,19 +171,19 @@ export default function NpcFightPage() {
     const t = setTimeout(() => {
       setPhase("fighting");
       setTimeLeft(5);
-      setSelectedAction(null);
+      setSelectedMove(null);
+      setHighlightedMove(null);
     }, 1500);
     return () => clearTimeout(t);
   }, [phase]);
 
   const resolveCurrentRound = useCallback(
-    (action: Action) => {
+    (serverAction: ServerAction) => {
       if (timerRef.current) clearInterval(timerRef.current);
 
       const simRound = simRoundsRef.current[currentRound - 1];
       if (!simRound) return;
 
-      // Animate hit
       setShakePlayer(!simRound.playerWins);
       setShakeNpc(simRound.playerWins);
       setFloatingDmg({
@@ -175,18 +203,33 @@ export default function NpcFightPage() {
         else setNpcRoundsWon((w) => w + 1);
 
         setLastRoundResult(simRound.playerWins ? "WIN" : "LOSS");
-        setSelectedAction(action);
         setPhase("round-result");
       }, 700);
     },
     [currentRound]
   );
 
-  const handleAction = (action: Action) => {
-    if (phase !== "fighting" || selectedAction) return;
-    setSelectedAction(action);
-    resolveCurrentRound(action);
-  };
+  const handleMove = useCallback(
+    (move: Move) => {
+      if (phase !== "fighting" || selectedMove) return;
+      setSelectedMove(move);
+      resolveCurrentRound(moveToServerAction(move));
+    },
+    [phase, selectedMove, resolveCurrentRound]
+  );
+
+  // Controls hook — keyboard + gamepad
+  const { isGamepadConnected, gamepadName, highlightedMove: controllerHighlight } = useFightControls(
+    phase === "fighting" && !selectedMove,
+    (move) => {
+      if (phase === "fighting" && !selectedMove) handleMove(move);
+    }
+  );
+
+  // Sync highlighted move from controller
+  useEffect(() => {
+    setHighlightedMove(controllerHighlight);
+  }, [controllerHighlight]);
 
   // Countdown timer during fighting
   useEffect(() => {
@@ -206,11 +249,11 @@ export default function NpcFightPage() {
     };
   }, [phase]);
 
-  // When timer hits 0, auto-resolve if no action chosen
+  // When timer hits 0, auto-resolve
   useEffect(() => {
     if (phase !== "fighting" || timeLeft > 0) return;
-    resolveCurrentRound(selectedAction ?? "attack");
-  }, [timeLeft, phase, resolveCurrentRound, selectedAction]);
+    handleMove(selectedMove ?? "punch");
+  }, [timeLeft, phase]);
 
   // After round-result, either go next round or end match
   useEffect(() => {
@@ -325,7 +368,6 @@ export default function NpcFightPage() {
           transition={{ type: "spring", stiffness: 200, damping: 20 }}
           className="text-center max-w-md w-full"
         >
-          {/* Fighter sprites on match-end */}
           <div className="flex items-end justify-center gap-8 mb-6">
             <FighterSprite
               character={playerCharacter}
@@ -421,6 +463,9 @@ export default function NpcFightPage() {
         }}
       />
 
+      {/* Controls legend — bottom left */}
+      <ControlsLegend visible={phase === "fighting"} mode={isGamepadConnected ? "gamepad" : "keyboard"} />
+
       <div className="relative z-10 flex flex-col h-full">
         {/* ─── HP Bars ─── */}
         <div className="flex items-start gap-4 px-4 sm:px-8 pt-4 pb-3">
@@ -501,10 +546,9 @@ export default function NpcFightPage() {
             <FighterSprite
               character={playerCharacter}
               side="left"
-              action={shakePlayer ? "hit" : selectedAction === "block" ? "block" : selectedAction ? "attack" : "idle"}
+              action={shakePlayer ? "hit" : selectedMove ?? highlightedMove ?? "idle"}
               size={220}
             />
-            {/* Floating damage */}
             <AnimatePresence>
               {floatingDmg?.player && (
                 <motion.div
@@ -539,7 +583,6 @@ export default function NpcFightPage() {
               action={shakeNpc ? "hit" : "idle"}
               size={220}
             />
-            {/* Floating damage */}
             <AnimatePresence>
               {floatingDmg?.npc && (
                 <motion.div
@@ -610,9 +653,7 @@ export default function NpcFightPage() {
                     {lastRoundResult === "WIN" ? "ROUND WIN!" : "ROUND LOSS"}
                   </motion.p>
                   <p className="font-ui text-xs uppercase tracking-[0.3em] mt-2" style={{ color: "rgba(255,255,255,0.4)" }}>
-                    {lastRoundResult === "WIN"
-                      ? `${playerRoundsWon} — ${npcRoundsWon}`
-                      : `${playerRoundsWon} — ${npcRoundsWon}`}
+                    {`${playerRoundsWon} — ${npcRoundsWon}`}
                   </p>
                 </div>
               </motion.div>
@@ -628,7 +669,7 @@ export default function NpcFightPage() {
               animate={{ opacity: 1, y: 0 }}
             >
               {/* Timer */}
-              <div className="flex justify-center mb-4">
+              <div className="flex justify-center mb-3">
                 <div
                   className="w-14 h-14 rounded-full border-4 flex items-center justify-center font-display text-2xl"
                   style={{
@@ -641,39 +682,80 @@ export default function NpcFightPage() {
                 </div>
               </div>
 
-              {/* Action buttons */}
-              {selectedAction ? (
+              {/* Gamepad indicator */}
+              {isGamepadConnected && (
+                <div className="text-center mb-2">
+                  <span className="font-ui text-xs text-arc-cyan opacity-70">
+                    🎮 {gamepadName || "Controller"} connected
+                  </span>
+                </div>
+              )}
+
+              {/* Move buttons or locked-in state */}
+              {selectedMove ? (
                 <div className="text-center py-4">
                   <p className="font-display text-lg" style={{ color: "#00FF9D" }}>ACTION LOCKED IN</p>
                   <div
-                    className="inline-block mt-2 px-5 py-2 rounded-xl"
+                    className="inline-flex items-center gap-3 mt-2 px-5 py-2 rounded-xl"
                     style={{
-                      background: `${ACTION_COLORS[selectedAction]}20`,
-                      border: `2px solid ${ACTION_COLORS[selectedAction]}60`,
-                      color: ACTION_COLORS[selectedAction],
+                      background: `${MOVE_COLORS[selectedMove]}20`,
+                      border: `2px solid ${MOVE_COLORS[selectedMove]}60`,
+                      color: MOVE_COLORS[selectedMove],
                     }}
                   >
-                    <span className="font-ui font-bold">{ACTION_LABELS[selectedAction]}</span>
+                    <span className="font-ui font-bold text-lg">{MOVE_LABELS[selectedMove]}</span>
+                    <span
+                      className="font-ui text-xs px-2 py-1 rounded"
+                      style={{
+                        background: "rgba(255,255,255,0.1)",
+                        color: "rgba(255,255,255,0.5)",
+                      }}
+                    >
+                      {moveToServerAction(selectedMove).toUpperCase()}
+                    </span>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-3">
-                  {(["attack", "special", "block"] as Action[]).map((action) => (
-                    <motion.button
-                      key={action}
-                      whileHover={{ scale: 1.04, y: -2 }}
-                      whileTap={{ scale: 0.96 }}
-                      onClick={() => handleAction(action)}
-                      className="py-4 rounded-xl font-display tracking-wider uppercase text-sm sm:text-base"
-                      style={{
-                        background: `${ACTION_COLORS[action]}15`,
-                        border: `2px solid ${ACTION_COLORS[action]}50`,
-                        color: ACTION_COLORS[action],
-                        textShadow: `0 0 10px ${ACTION_COLORS[action]}60`,
-                      }}
-                    >
-                      {ACTION_LABELS[action]}
-                    </motion.button>
+                <div className="space-y-2">
+                  {MOVE_GRID.map((row, rowIdx) => (
+                    <div key={rowIdx} className="grid grid-cols-3 gap-2">
+                      {row.map((move) => {
+                        const isHighlighted = highlightedMove === move;
+                        const color = MOVE_COLORS[move];
+                        return (
+                          <motion.button
+                            key={move}
+                            whileHover={{ scale: 1.04, y: -2 }}
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => handleMove(move)}
+                            className="py-3 rounded-xl font-display tracking-wider uppercase text-xs sm:text-sm relative overflow-hidden"
+                            style={{
+                              background: isHighlighted ? `${color}30` : `${color}12`,
+                              border: isHighlighted
+                                ? `2px solid ${color}`
+                                : `2px solid ${color}45`,
+                              color: color,
+                              textShadow: isHighlighted ? `0 0 12px ${color}` : `0 0 8px ${color}60`,
+                              boxShadow: isHighlighted ? `0 0 16px ${color}40` : "none",
+                              transition: "all 0.1s ease",
+                            }}
+                          >
+                            {/* Key badge */}
+                            <span
+                              className="absolute top-1 right-1 text-[9px] font-mono px-1 rounded"
+                              style={{
+                                background: "rgba(255,255,255,0.08)",
+                                color: "rgba(255,255,255,0.35)",
+                                border: "1px solid rgba(255,255,255,0.12)",
+                              }}
+                            >
+                              {MOVE_KEYS[move]}
+                            </span>
+                            {MOVE_LABELS[move]}
+                          </motion.button>
+                        );
+                      })}
+                    </div>
                   ))}
                 </div>
               )}
