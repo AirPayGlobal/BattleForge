@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import { Character, CharacterCosmetic, PlayerCosmetic } from "../lib/types";
+import FighterSprite from "../components/FighterSprite";
 
 const COSMETIC_TYPE_LABELS: Record<string, string> = {
   SKIN: "Skins",
@@ -101,17 +102,20 @@ export default function CharacterPage() {
       {currentCharacter ? (
         <div className="card border-arc-cyan/30 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-arc-cyan/5 to-void-purple/5 pointer-events-none" />
-          <div className="relative flex items-start gap-6">
-            <div className="w-20 h-20 bg-deep-navy rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-4xl">&#x2694;</span>
+          <div className="relative flex flex-col items-center text-center py-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-ui text-xs uppercase tracking-wider text-arc-cyan">Active Character</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-ui text-xs uppercase tracking-wider text-arc-cyan">Active Character</span>
-              </div>
-              <h2 className="font-display text-2xl text-primary-text">{currentCharacter.name.toUpperCase()}</h2>
-              <p className="text-secondary-text font-ui text-sm mt-1">{currentCharacter.description}</p>
+            <div className="mb-2">
+              <FighterSprite
+                character={player?.character?.name ?? "Ironclad"}
+                side="left"
+                action="idle"
+                size={250}
+              />
             </div>
+            <h2 className="font-display text-2xl text-primary-text">{currentCharacter.name.toUpperCase()}</h2>
+            <p className="text-secondary-text font-ui text-sm mt-1 max-w-md">{currentCharacter.description}</p>
           </div>
         </div>
       ) : (
@@ -139,21 +143,24 @@ export default function CharacterPage() {
                 }`}
                 onClick={() => !isActive && handleSetCharacter(char.id)}
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 bg-deep-navy rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-2xl">&#x1F5E1;</span>
+                <div className="flex flex-col items-center text-center">
+                  <div className="mb-2">
+                    <FighterSprite
+                      character={char.name}
+                      side="left"
+                      action="idle"
+                      size={100}
+                    />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="font-display text-lg text-primary-text truncate">{char.name.toUpperCase()}</h3>
-                      {char.isDefault && (
-                        <span className="text-[10px] font-ui font-bold uppercase tracking-wider bg-storm-gold/20 text-storm-gold border border-storm-gold/30 rounded-full px-2 py-0.5 flex-shrink-0">
-                          Default
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-secondary-text font-ui line-clamp-2">{char.description}</p>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="font-display text-lg text-primary-text truncate">{char.name.toUpperCase()}</h3>
+                    {char.isDefault && (
+                      <span className="text-[10px] font-ui font-bold uppercase tracking-wider bg-storm-gold/20 text-storm-gold border border-storm-gold/30 rounded-full px-2 py-0.5 flex-shrink-0">
+                        Default
+                      </span>
+                    )}
                   </div>
+                  <p className="text-xs text-secondary-text font-ui line-clamp-2">{char.description}</p>
                 </div>
                 <div className="mt-3">
                   {isActive ? (

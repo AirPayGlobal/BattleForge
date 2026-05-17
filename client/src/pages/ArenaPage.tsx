@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
+import FighterSprite from "../components/FighterSprite";
 
 const TIER_BUTTONS = [
   { tier: "BEGINNER", label: "BEGINNER", color: "#22c55e", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.4)" },
@@ -89,20 +90,14 @@ export default function ArenaPage() {
             }}
           >
             <div className="p-8">
-              {/* Icon area */}
-              <div className="flex justify-center mb-6">
-                <div
-                  className="w-24 h-24 rounded-full flex items-center justify-center text-5xl"
-                  style={{ background: "radial-gradient(circle, rgba(255,61,107,0.2) 0%, transparent 70%)", border: "2px solid rgba(255,61,107,0.4)" }}
-                >
-                  💀
-                </div>
-              </div>
-
               <h2 className="font-display text-3xl text-white text-center tracking-widest mb-2">FIGHT NPC</h2>
-              <p className="font-ui text-sm text-center mb-8" style={{ color: "rgba(255,255,255,0.5)" }}>
+              <p className="font-ui text-sm text-center mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
                 Solo Combat — Face AI fighters
               </p>
+
+              <div className="flex justify-center mb-4">
+                <FighterSprite character={player?.character?.name ?? "Ironclad"} side="left" action="idle" size={150} />
+              </div>
 
               <div className="space-y-3">
                 {TIER_BUTTONS.map((t, i) => (
@@ -142,20 +137,18 @@ export default function ArenaPage() {
             }}
           >
             <div className="p-8">
-              {/* Icon area */}
-              <div className="flex justify-center mb-6">
-                <div
-                  className="w-24 h-24 rounded-full flex items-center justify-center text-5xl"
-                  style={{ background: "radial-gradient(circle, rgba(0,255,255,0.2) 0%, transparent 70%)", border: "2px solid rgba(0,255,255,0.4)" }}
-                >
-                  ⚔️
-                </div>
-              </div>
-
               <h2 className="font-display text-3xl text-white text-center tracking-widest mb-2">FIND OPPONENT</h2>
-              <p className="font-ui text-sm text-center mb-8" style={{ color: "rgba(255,255,255,0.5)" }}>
+              <p className="font-ui text-sm text-center mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
                 PvP — Match with a live fighter
               </p>
+
+              <div className="flex justify-center items-end gap-8 mb-4">
+                <FighterSprite character={player?.character?.name ?? "Ironclad"} side="left" action="idle" size={120} />
+                <span className="font-display text-4xl text-secondary-text mb-8">VS</span>
+                <div style={{ opacity: 0.4 }}>
+                  <FighterSprite character="Shadowblade" side="right" action="idle" size={120} />
+                </div>
+              </div>
 
               {/* Online count */}
               <div

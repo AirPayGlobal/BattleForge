@@ -19,6 +19,7 @@ import CosmeticStorePage from "./pages/CosmeticStorePage";
 import NpcArenaPage from "./pages/NpcArenaPage";
 import NpcFightPage from "./pages/NpcFightPage";
 import ArenaMatchmakingPage from "./pages/ArenaMatchmakingPage";
+import LeaderboardPage from "./pages/LeaderboardPage";
 import Layout from "./components/Layout";
 
 export default function App() {
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="/arena/npc" element={<NpcArenaPage />} />
         <Route path="/arena/npc/fight/:npcId" element={<NpcFightPage />} />
         <Route path="/arena/matchmaking" element={<ArenaMatchmakingPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
       </Route>
       <Route path="/weapon/:id/public" element={<PublicWeaponPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

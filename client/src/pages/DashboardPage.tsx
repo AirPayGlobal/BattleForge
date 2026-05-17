@@ -5,6 +5,15 @@ import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import { Weapon, RANK_XP_COSTS, RANK_ORDER, RANK_LABELS, RANK_COLORS } from "../lib/types";
 import WeaponCard from "../components/WeaponCard";
+import FighterSprite from "../components/FighterSprite";
+
+interface BattleHistoryItem {
+  type: "npc" | "pvp";
+  result: "WIN" | "LOSS";
+  opponent: string;
+  xpEarned: number;
+  date: string;
+}
 
 function getPlayerRankInfo(xp: number) {
   let currentRank = RANK_ORDER[0];
@@ -32,6 +41,8 @@ export default function DashboardPage() {
   const { player } = useAuth();
   const [recentWeapons, setRecentWeapons] = useState<Weapon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [battles, setBattles] = useState<BattleHistoryItem[]>([]);
+  const [battlesLoading, setBattlesLoading] = useState(true);
 
   useEffect(() => {
     api
@@ -39,6 +50,11 @@ export default function DashboardPage() {
       .then(({ data }) => setRecentWeapons(data.slice(0, 4)))
       .catch(() => {})
       .finally(() => setLoading(false));
+    api
+      .get("/players/me/battles")
+      .then(({ data }) => setBattles(data.slice(0, 5)))
+      .catch(() => {})
+      .finally(() => setBattlesLoading(false));
   }, []);
 
   if (!player) return null;
@@ -47,7 +63,101 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome */}
+      {/* Hero Section */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="relative overflow-hidden rounded-2xl"
+        style={{
+          background: "linear-gradient(135deg, #0d0005 0%, #080010 50%, #0a000a 100%)",
+          border: "1px solid rgba(255,61,107,0.2)",
+          boxShadow: "0 0 40px rgba(255,61,107,0.08), inset 0 0 60px rgba(0,0,0,0.5)",
+        }}
+      >
+        {/* Scanline overlay */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)",
+          }}
+        />
+        {/* Grid overlay */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-5"
+          style={{
+            backgroundImage: "linear-gradient(rgba(255,61,107,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,61,107,0.5) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
+
+        <div className="relative p-6 sm:p-8">
+          {/* Name and rank */}
+          <div className="text-center mb-4">
+            <p className="font-ui text-xs uppercase tracking-[0.3em] mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+              Welcome back, warrior
+            </p>
+            <motion.h1
+              animate={{
+                textShadow: [
+                  "0 0 20px #FF3D6B80",
+                  "0 0 35px #FF3D6BB0",
+                  "0 0 20px #FF3D6B80",
+                ],
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              className="font-display text-4xl sm:text-5xl text-white tracking-widest uppercase"
+            >
+              {player.username.toUpperCase()}
+            </motion.h1>
+            <p
+              className="font-ui text-sm mt-1 uppercase tracking-wider"
+              style={{ color: RANK_COLORS[currentRank] }}
+            >
+              {RANK_LABELS[currentRank]}
+            </p>
+          </div>
+
+          {/* Fighter sprite */}
+          <div className="flex justify-center mb-4">
+            <motion.div
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <FighterSprite
+                character={player?.character?.name ?? "Ironclad"}
+                side="left"
+                action="idle"
+                size={280}
+              />
+            </motion.div>
+          </div>
+
+          {/* Quick stats bar */}
+          <div
+            className="grid grid-cols-4 gap-2 rounded-xl px-4 py-3 mt-2"
+            style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            {[
+              { label: "XP", value: player.xp.toLocaleString(), color: "#FFD600" },
+              { label: "Wins", value: player.wins, color: "#00FF9D" },
+              { label: "Losses", value: player.losses, color: "#FF3D6B" },
+              { label: "Streak", value: player.winStreak, color: "#f59e0b" },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="font-display text-xl sm:text-2xl" style={{ color: stat.color }}>
+                  {stat.value}
+                </div>
+                <div className="font-ui text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Welcome text */}
       <div>
         <h1 className="font-display text-4xl text-primary-text">
           WELCOME, {player.username.toUpperCase()}
@@ -209,6 +319,84 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {recentWeapons.map((w) => (
               <WeaponCard key={w.id} weapon={w} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Recent Battles */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-xl text-primary-text">RECENT BATTLES</h2>
+          <Link
+            to="/arena"
+            className="text-xs font-ui uppercase tracking-wider text-arc-cyan hover:text-arc-cyan/80"
+          >
+            View Arena →
+          </Link>
+        </div>
+        {battlesLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="w-6 h-6 border-2 border-arc-cyan border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : battles.length === 0 ? (
+          <div className="card text-center py-8">
+            <p className="text-secondary-text font-ui">
+              No battles yet — enter the arena!
+            </p>
+            <Link to="/arena" className="btn-primary mt-4 inline-block">
+              Enter Arena
+            </Link>
+          </div>
+        ) : (
+          <div className="card p-0 overflow-hidden">
+            {battles.map((battle, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 px-4 py-3 border-b last:border-b-0"
+                style={{ borderColor: "rgba(255,255,255,0.06)" }}
+              >
+                {/* Result badge */}
+                <span
+                  className="font-ui font-bold text-xs uppercase tracking-wider px-2.5 py-1 rounded-md flex-shrink-0"
+                  style={{
+                    background: battle.result === "WIN" ? "rgba(0,255,157,0.15)" : "rgba(255,61,107,0.15)",
+                    color: battle.result === "WIN" ? "#00FF9D" : "#FF3D6B",
+                    border: `1px solid ${battle.result === "WIN" ? "rgba(0,255,157,0.3)" : "rgba(255,61,107,0.3)"}`,
+                  }}
+                >
+                  {battle.result}
+                </span>
+
+                {/* Opponent */}
+                <span className="font-ui text-sm text-primary-text flex-1 truncate">
+                  vs {battle.opponent}
+                </span>
+
+                {/* Type badge */}
+                <span
+                  className="font-ui text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 hidden sm:inline-flex"
+                  style={{
+                    background: battle.type === "pvp" ? "rgba(139,92,246,0.15)" : "rgba(245,158,11,0.15)",
+                    color: battle.type === "pvp" ? "#a78bfa" : "#f59e0b",
+                    border: `1px solid ${battle.type === "pvp" ? "rgba(139,92,246,0.25)" : "rgba(245,158,11,0.25)"}`,
+                  }}
+                >
+                  {battle.type === "pvp" ? "PvP" : "NPC"}
+                </span>
+
+                {/* XP */}
+                {battle.xpEarned > 0 && (
+                  <span className="font-display text-sm flex-shrink-0" style={{ color: "#FFD600" }}>
+                    +{battle.xpEarned} XP
+                  </span>
+                )}
+
+                {/* Date */}
+                <span className="font-ui text-xs text-secondary-text flex-shrink-0 hidden md:block">
+                  {new Date(battle.date).toLocaleDateString()}
+                </span>
+              </div>
             ))}
           </div>
         )}
