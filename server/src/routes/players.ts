@@ -60,7 +60,6 @@ router.get("/leaderboard", authenticate, async (req: AuthRequest, res: Response)
     const players = await prisma.player.findMany({
       take: 25,
       orderBy: { xp: "desc" },
-      include: { character: true },
       select: {
         id: true,
         username: true,
