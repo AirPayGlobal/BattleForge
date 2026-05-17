@@ -99,6 +99,7 @@ export default function NpcFightPage() {
   const [floatingDmg, setFloatingDmg] = useState<{ player?: number; npc?: number } | null>(null);
   const [lastRoundResult, setLastRoundResult] = useState<"WIN" | "LOSS" | null>(null);
   const [matchResult, setMatchResult] = useState<{ result: "WIN" | "LOSS"; xpEarned: number } | null>(null);
+  const [battleError, setBattleError] = useState<string | null>(null);
 
   const simRoundsRef = useRef<SimRound[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -119,8 +120,7 @@ export default function NpcFightPage() {
         if (data.result === "WIN") refreshPlayer();
       })
       .catch((err) => {
-        toast.error(err.response?.data?.error || "Battle failed");
-        navigate("/arena");
+        setBattleError(err.response?.data?.error || "Battle failed. Please try again.");
       });
   }, [npcId, weaponId]);
 
@@ -225,6 +225,25 @@ export default function NpcFightPage() {
     }, 2200);
     return () => clearTimeout(t);
   }, [phase, currentRound]);
+
+  // ─── Error ─────────────────────────────────────────────────────────────────
+  if (battleError) {
+    return (
+      <div
+        className="fixed inset-0 flex flex-col items-center justify-center gap-6"
+        style={{ background: "radial-gradient(ellipse at center, #1a0a0a 0%, #000 100%)" }}
+      >
+        <p className="font-display text-2xl text-danger-red tracking-widest">BATTLE ERROR</p>
+        <p className="font-ui text-secondary-text text-center max-w-sm px-4">{battleError}</p>
+        <button
+          onClick={() => navigate(-1)}
+          className="font-ui text-sm uppercase tracking-widest px-6 py-3 rounded-xl border border-arc-cyan text-arc-cyan hover:bg-arc-cyan/10 transition-colors"
+        >
+          ← Go Back
+        </button>
+      </div>
+    );
+  }
 
   // ─── VS Intro ──────────────────────────────────────────────────────────────
   if (phase === "vs-intro") {

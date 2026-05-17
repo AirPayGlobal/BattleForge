@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
-import { Npc, Weapon, RANK_LABELS, RANK_COLORS } from "../lib/types";
+import { Npc, Weapon, RANK_COLORS } from "../lib/types";
 
 type NpcTier = "BEGINNER" | "WARRIOR" | "ELITE";
 
@@ -35,9 +35,6 @@ export default function NpcArenaPage() {
     new Set(tierParam ? [tierParam] : ["BEGINNER"])
   );
 
-  // Weapon selector modal state
-  const [battleTarget, setBattleTarget] = useState<Npc | null>(null);
-  const [selectedWeapon, setSelectedWeapon] = useState<string>("");
 
   useEffect(() => {
     Promise.all([
@@ -61,23 +58,10 @@ export default function NpcArenaPage() {
     });
   };
 
-  const handleBattle = () => {
-    if (!battleTarget) return;
-    navigate(`/arena/npc/fight/${battleTarget.id}`, {
-      state: { weaponId: selectedWeapon || undefined, npcName: battleTarget.name },
-    });
-  };
-
   const startFight = (npc: Npc) => {
-    if (weapons.length === 0) {
-      // No weapons — go straight to fight without weapon selection
-      navigate(`/arena/npc/fight/${npc.id}`, {
-        state: { npcName: npc.name },
-      });
-    } else {
-      setBattleTarget(npc);
-      setSelectedWeapon(weapons[0]?.id ?? "");
-    }
+    navigate(`/arena/npc/fight/${npc.id}`, {
+      state: { weaponId: weapons[0]?.id, npcName: npc.name },
+    });
   };
 
   if (loading) {
@@ -292,83 +276,6 @@ export default function NpcArenaPage() {
       })}
       </>
       )}
-
-      {/* Weapon Selector Modal */}
-      <AnimatePresence>
-        {battleTarget && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-            onClick={(e) => { if (e.target === e.currentTarget) setBattleTarget(null); }}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-card-surface border border-card-border rounded-2xl p-6 w-full max-w-md"
-            >
-              <h2 className="font-display text-xl text-primary-text mb-1">
-                BATTLE {battleTarget.name.toUpperCase()}
-              </h2>
-              <p className="text-secondary-text font-ui text-sm mb-5">
-                Select a weapon to enter battle with.
-              </p>
-
-              {weapons.length === 0 ? (
-                <p className="text-secondary-text font-ui text-sm text-center py-4">
-                  No available weapons. Forge one first!
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto mb-5">
-                  {weapons.map((w) => (
-                    <button
-                      key={w.id}
-                      onClick={() => setSelectedWeapon(w.id)}
-                      className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 transition-all text-left ${
-                        selectedWeapon === w.id
-                          ? "border-arc-cyan bg-arc-cyan/10"
-                          : "border-card-border hover:border-secondary-text"
-                      }`}
-                    >
-                      <div>
-                        <p className="font-ui font-semibold text-sm text-primary-text">{w.name}</p>
-                        <p className="text-xs text-secondary-text font-ui">
-                          <span style={{ color: RANK_COLORS[w.rank] }}>{RANK_LABELS[w.rank]}</span>
-                          {" · "}{w.wins}W / {w.losses}L
-                        </p>
-                      </div>
-                      {selectedWeapon === w.id && (
-                        <span className="w-4 h-4 rounded-full bg-arc-cyan flex items-center justify-center flex-shrink-0">
-                          <svg className="w-2.5 h-2.5 text-deep-navy" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setBattleTarget(null)}
-                  className="btn-secondary flex-1"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleBattle}
-                  className="btn-primary flex-1"
-                >
-                  FIGHT
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </div>
   );
