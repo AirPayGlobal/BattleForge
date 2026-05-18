@@ -34,6 +34,14 @@ const CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
   frostmantle: { bodyColor: "#0c4a6e", accentColor: "#bae6fd", headColor: "#0369a1", emissive: "#0284c7", weapon: "ice-lance" },
 };
 
+// Limb segment lengths
+const U_ARM   = 0.44;  // upper arm
+const FOREARM = 0.38;  // forearm
+const U_LEG   = 0.52;  // thigh
+const SHIN    = 0.44;  // shin
+
+type JointTarget = { z: number; x?: number };
+
 export function Fighter3D({
   character,
   position,
@@ -45,73 +53,170 @@ export function Fighter3D({
   facingRight: boolean;
   action: SpriteAction;
 }) {
-  const groupRef = useRef<THREE.Group>(null);
+  const rootRef      = useRef<THREE.Group>(null);
+  const torsoRef     = useRef<THREE.Group>(null);
+  const rShoulderRef = useRef<THREE.Group>(null);
+  const rElbowRef    = useRef<THREE.Group>(null);
+  const lShoulderRef = useRef<THREE.Group>(null);
+  const lElbowRef    = useRef<THREE.Group>(null);
+  const rHipRef      = useRef<THREE.Group>(null);
+  const rKneeRef     = useRef<THREE.Group>(null);
+  const lHipRef      = useRef<THREE.Group>(null);
+  const lKneeRef     = useRef<THREE.Group>(null);
+
   const config = CHARACTER_CONFIGS[character.toLowerCase()] ?? CHARACTER_CONFIGS.ironclad;
 
-  // Animation state
-  const animRef = useRef({ phase: 0, punchPhase: 0, kickPhase: 0 });
-
   useFrame(({ clock }) => {
-    if (!groupRef.current) return;
+    if (!rootRef.current) return;
     const t = clock.elapsedTime;
-    const anim = animRef.current;
+    const LERP = 0.14;
 
-    // Reset base transforms
-    groupRef.current.rotation.y = facingRight ? 0 : Math.PI;
+    rootRef.current.rotation.y = facingRight ? 0 : Math.PI;
+
+    // Joint rotation targets.
+    // z > 0  →  limb tip swings toward +X (forward for right-facing fighter)
+    // x < 0  →  limb tip swings toward +Z (toward camera)
+    let tRS: JointTarget = { z: -0.2, x: 0 };  // right shoulder
+    let tRE: JointTarget = { z:  0.1 };         // right elbow
+    let tLS: JointTarget = { z:  0.2, x: 0 };  // left shoulder
+    let tLE: JointTarget = { z: -0.1 };         // left elbow
+    let tRH: JointTarget = { z:  0.05 };        // right hip
+    let tRK: JointTarget = { z:  0.0 };         // right knee
+    let tLH: JointTarget = { z: -0.05 };        // left hip
+    let tLK: JointTarget = { z:  0.0 };         // left knee
+    let tTorsoX = 0;
+    let rootY = position[1];
 
     switch (action) {
-      case "idle":
-        groupRef.current.position.y = position[1] + Math.sin(t * 1.5) * 0.04;
+      case "idle": {
+        const s = Math.sin(t * 1.5);
+        tRS = { z: -0.2 + s * 0.06, x: 0 };
+        tLS = { z:  0.2 - s * 0.06, x: 0 };
+        tRH = { z:  s * 0.04 };
+        tLH = { z: -s * 0.04 };
+        rootY = position[1] + s * 0.03;
         break;
+      }
+
       case "punch":
-      case "attack":
-        anim.punchPhase = Math.min(anim.punchPhase + 0.15, 1);
-        groupRef.current.position.x =
-          position[0] + (facingRight ? 1 : -1) * Math.sin(anim.punchPhase * Math.PI) * 0.4;
+      case "attack": {
+        tRS = { z: 1.15, x: -0.15 };
+        tRE = { z: -0.1 };
+        tLS = { z: 0.55, x: -0.1 };
+        tLE = { z: -0.7 };
+        tTorsoX = -0.12;
         break;
-      case "kick":
-        groupRef.current.position.y = position[1] + Math.sin(t * 8) * 0.1;
-        groupRef.current.rotation.z = (facingRight ? 1 : -1) * Math.sin(t * 8) * 0.15;
+      }
+
+      case "kick": {
+        tRH = { z: 1.35 };
+        tRK = { z: -0.45 };
+        tLH = { z: -0.08 };
+        tRS = { z: -0.5 };
+        tLS = { z:  0.65 };
+        tTorsoX = -0.08;
         break;
-      case "jump":
-        groupRef.current.position.y = position[1] + Math.abs(Math.sin(t * 4)) * 1.2;
+      }
+
+      case "jump": {
+        const jf = Math.abs(Math.sin(t * 3));
+        tRH = { z: 0.55 * jf };
+        tLH = { z: 0.55 * jf };
+        tRK = { z: -0.75 * jf };
+        tLK = { z: -0.75 * jf };
+        tRS = { z: -0.4 };
+        tLS = { z:  0.4 };
+        rootY = position[1] + Math.abs(Math.sin(t * 3)) * 1.2;
         break;
-      case "slide":
-        groupRef.current.position.y = position[1] - 0.3;
-        groupRef.current.scale.y = 0.7;
-        groupRef.current.position.x = position[0] + (facingRight ? 1 : -1) * 0.5;
+      }
+
+      case "slide": {
+        tRH = { z: 0.48 };
+        tLH = { z: 0.28 };
+        tRK = { z: -0.65 };
+        tLK = { z: -0.38 };
+        tRS = { z: 0.35 };
+        tLS = { z: -0.1 };
+        tTorsoX = -0.42;
+        rootY = position[1] - 0.32;
         break;
-      case "weapon-strike":
-        groupRef.current.rotation.z = (facingRight ? -1 : 1) * Math.sin(t * 6) * 0.4;
-        groupRef.current.position.x =
-          position[0] + (facingRight ? 1 : -1) * Math.sin(t * 6) * 0.6;
+      }
+
+      case "weapon-strike": {
+        const sw = Math.sin(t * 5);
+        tRS = { z: 0.85 + sw * 0.5, x: -0.1 };
+        tRE = { z: -0.15 + sw * 0.3 };
+        tLS = { z: 0.35 };
+        tLE = { z: -0.5 };
+        tTorsoX = sw * 0.15;
         break;
-      case "block":
-        // lean slightly back
-        groupRef.current.rotation.z = facingRight ? 0.1 : -0.1;
+      }
+
+      case "block": {
+        tLS = { z: 1.05, x: -0.45 };
+        tLE = { z: -1.2 };
+        tRS = { z: 0.55, x: -0.2 };
+        tRE = { z: -0.65 };
         break;
-      case "hit":
-        groupRef.current.position.x =
-          position[0] - (facingRight ? 1 : -1) * Math.abs(Math.sin(t * 15)) * 0.3;
-        groupRef.current.rotation.z =
-          (facingRight ? -1 : 1) * Math.abs(Math.sin(t * 15)) * 0.2;
+      }
+
+      case "hit": {
+        tRS = { z: -0.5, x: 0 };
+        tLS = { z:  0.5, x: 0 };
+        tTorsoX = Math.sin(t * 12) * 0.2;
+        rootRef.current.position.x =
+          position[0] - (facingRight ? 1 : -1) * Math.abs(Math.sin(t * 14)) * 0.28;
         break;
-      case "victory":
-        groupRef.current.position.y = position[1] + Math.abs(Math.sin(t * 3)) * 0.5;
+      }
+
+      case "victory": {
+        tRS = { z: 2.8, x: 0 };
+        tRE = { z: -0.25 };
+        tLS = { z: 2.8, x: 0 };
+        tLE = { z: -0.25 };
+        rootY = position[1] + Math.abs(Math.sin(t * 3)) * 0.4;
         break;
-      case "defeat":
-        groupRef.current.rotation.z = (facingRight ? -1 : 1) * Math.min(t * 0.5, 0.8);
-        groupRef.current.position.y = position[1] - Math.min(t * 0.2, 0.4);
+      }
+
+      case "defeat": {
+        tRS = { z: 0.7 };
+        tLS = { z: 0.7 };
+        tRE = { z: -0.9 };
+        tLE = { z: -0.9 };
+        tRH = { z: 0.25 };
+        tLH = { z: 0.25 };
+        tRK = { z: -0.35 };
+        tLK = { z: -0.35 };
+        tTorsoX = 0.55;
+        rootY = position[1] - 0.28;
         break;
+      }
     }
 
-    // Reset scale unless sliding
-    if (action !== "slide") {
-      groupRef.current.scale.y += (1 - groupRef.current.scale.y) * 0.2;
+    rootRef.current.position.y += (rootY - rootRef.current.position.y) * LERP;
+    if (action !== "hit") {
+      rootRef.current.position.x += (position[0] - rootRef.current.position.x) * LERP;
     }
-    // Reset X position for non-movement actions
-    if (!["punch", "attack", "weapon-strike", "slide"].includes(action)) {
-      groupRef.current.position.x += (position[0] - groupRef.current.position.x) * 0.15;
+
+    // Lerp z (and x when specified, otherwise reset to 0) for a joint group
+    const lj = (ref: { current: THREE.Group | null }, tgt: JointTarget) => {
+      if (!ref.current) return;
+      ref.current.rotation.z += (tgt.z - ref.current.rotation.z) * LERP;
+      const tx = tgt.x ?? 0;
+      ref.current.rotation.x += (tx - ref.current.rotation.x) * LERP;
+    };
+
+    lj(rShoulderRef, tRS);
+    lj(rElbowRef,    tRE);
+    lj(lShoulderRef, tLS);
+    lj(lElbowRef,    tLE);
+    lj(rHipRef,  tRH);
+    lj(rKneeRef, tRK);
+    lj(lHipRef,  tLH);
+    lj(lKneeRef, tLK);
+
+    if (torsoRef.current) {
+      torsoRef.current.rotation.x += (tTorsoX - torsoRef.current.rotation.x) * LERP;
     }
   });
 
@@ -125,116 +230,129 @@ export function Fighter3D({
     />
   );
 
-  const bodyScale = config.bodyScale ?? [1, 1, 1];
-
   return (
-    <group ref={groupRef} position={position} castShadow>
-      {/* Head */}
-      <mesh position={[0, 2.1, 0]} castShadow>
-        <boxGeometry args={[0.45, 0.45, 0.4]} />
-        {mat(config.headColor, config.emissive, 0.3)}
-      </mesh>
+    <group ref={rootRef} position={position} castShadow>
+      {/* Upper body — torso group carries head + arms and rotates for lean */}
+      <group ref={torsoRef}>
+        {/* Head */}
+        <mesh position={[0, 2.1, 0]} castShadow>
+          <boxGeometry args={[0.45, 0.45, 0.4]} />
+          {mat(config.headColor, config.emissive, 0.3)}
+        </mesh>
+        <mesh position={[ 0.12, 2.15, 0.21]}>
+          <sphereGeometry args={[0.06, 8, 8]} />
+          <meshStandardMaterial emissive={config.accentColor} emissiveIntensity={2} color={config.accentColor} />
+        </mesh>
+        <mesh position={[-0.12, 2.15, 0.21]}>
+          <sphereGeometry args={[0.06, 8, 8]} />
+          <meshStandardMaterial emissive={config.accentColor} emissiveIntensity={2} color={config.accentColor} />
+        </mesh>
+        {/* Neck */}
+        <mesh position={[0, 1.85, 0]}>
+          <cylinderGeometry args={[0.1, 0.1, 0.2, 8]} />
+          {mat(config.headColor)}
+        </mesh>
+        {/* Torso */}
+        <mesh position={[0, 1.3, 0]} scale={config.bodyScale ?? [1, 1, 1]} castShadow>
+          <boxGeometry args={[0.65, 0.8, 0.38]} />
+          {mat(config.bodyColor, config.emissive, 0.15)}
+        </mesh>
+        {/* Chest accent */}
+        <mesh position={[0, 1.4, 0.2]}>
+          <boxGeometry args={[0.3, 0.35, 0.05]} />
+          {mat(config.accentColor, config.accentColor, 0.4)}
+        </mesh>
 
-      {/* Eyes glow */}
-      <mesh position={[0.12, 2.15, 0.21]}>
-        <sphereGeometry args={[0.06, 8, 8]} />
-        <meshStandardMaterial emissive={config.accentColor} emissiveIntensity={2} color={config.accentColor} />
-      </mesh>
-      <mesh position={[-0.12, 2.15, 0.21]}>
-        <sphereGeometry args={[0.06, 8, 8]} />
-        <meshStandardMaterial emissive={config.accentColor} emissiveIntensity={2} color={config.accentColor} />
-      </mesh>
+        {/* ── Right arm ── shoulder pivot */}
+        <group ref={rShoulderRef} position={[0.42, 1.55, 0]}>
+          <mesh position={[0, -U_ARM / 2, 0]}>
+            <cylinderGeometry args={[0.1, 0.09, U_ARM, 8]} />
+            {mat(config.bodyColor)}
+          </mesh>
+          {/* Elbow pivot */}
+          <group ref={rElbowRef} position={[0, -U_ARM, 0]}>
+            <mesh position={[0, -FOREARM / 2, 0]}>
+              <cylinderGeometry args={[0.08, 0.07, FOREARM, 8]} />
+              {mat(config.accentColor)}
+            </mesh>
+            {/* Fist + weapon (right hand) */}
+            <group position={[0, -FOREARM, 0]}>
+              <mesh>
+                <boxGeometry args={[0.18, 0.16, 0.18]} />
+                {mat(config.accentColor, config.accentColor, 0.3)}
+              </mesh>
+              <WeaponMesh type={config.weapon} accentColor={config.accentColor} side="right" />
+            </group>
+          </group>
+        </group>
 
-      {/* Neck */}
-      <mesh position={[0, 1.85, 0]}>
-        <cylinderGeometry args={[0.1, 0.1, 0.2, 8]} />
-        {mat(config.headColor)}
-      </mesh>
+        {/* ── Left arm ── shoulder pivot */}
+        <group ref={lShoulderRef} position={[-0.42, 1.55, 0]}>
+          <mesh position={[0, -U_ARM / 2, 0]}>
+            <cylinderGeometry args={[0.1, 0.09, U_ARM, 8]} />
+            {mat(config.bodyColor)}
+          </mesh>
+          {/* Elbow pivot */}
+          <group ref={lElbowRef} position={[0, -U_ARM, 0]}>
+            <mesh position={[0, -FOREARM / 2, 0]}>
+              <cylinderGeometry args={[0.08, 0.07, FOREARM, 8]} />
+              {mat(config.accentColor)}
+            </mesh>
+            {/* Fist + weapon (left hand — only daggers) */}
+            <group position={[0, -FOREARM, 0]}>
+              <mesh>
+                <boxGeometry args={[0.18, 0.16, 0.18]} />
+                {mat(config.accentColor, config.accentColor, 0.3)}
+              </mesh>
+              <WeaponMesh type={config.weapon} accentColor={config.accentColor} side="left" />
+            </group>
+          </group>
+        </group>
+      </group>
 
-      {/* Torso */}
-      <mesh position={[0, 1.3, 0]} scale={bodyScale} castShadow>
-        <boxGeometry args={[0.65, 0.8, 0.38]} />
-        {mat(config.bodyColor, config.emissive, 0.15)}
-      </mesh>
-
-      {/* Chest accent */}
-      <mesh position={[0, 1.4, 0.2]}>
-        <boxGeometry args={[0.3, 0.35, 0.05]} />
-        {mat(config.accentColor, config.accentColor, 0.4)}
-      </mesh>
-
-      {/* Hips */}
+      {/* Hips block */}
       <mesh position={[0, 0.85, 0]}>
         <boxGeometry args={[0.55, 0.22, 0.35]} />
         {mat(config.bodyColor)}
       </mesh>
 
-      {/* Left upper arm */}
-      <mesh position={[-0.45, 1.35, 0]} rotation={[0, 0, 0.3]}>
-        <cylinderGeometry args={[0.1, 0.09, 0.45, 8]} />
-        {mat(config.bodyColor)}
-      </mesh>
-      {/* Left forearm */}
-      <mesh position={[-0.52, 1.0, 0]} rotation={[0, 0, 0.1]}>
-        <cylinderGeometry args={[0.08, 0.07, 0.4, 8]} />
-        {mat(config.accentColor)}
-      </mesh>
-      {/* Left fist */}
-      <mesh position={[-0.55, 0.76, 0]}>
-        <boxGeometry args={[0.18, 0.16, 0.18]} />
-        {mat(config.accentColor, config.accentColor, 0.3)}
-      </mesh>
+      {/* ── Right leg ── hip pivot */}
+      <group ref={rHipRef} position={[0.2, 0.74, 0]}>
+        <mesh position={[0, -U_LEG / 2, 0]}>
+          <cylinderGeometry args={[0.13, 0.11, U_LEG, 8]} />
+          {mat(config.bodyColor)}
+        </mesh>
+        {/* Knee pivot */}
+        <group ref={rKneeRef} position={[0, -U_LEG, 0]}>
+          <mesh position={[0, -SHIN / 2, 0]}>
+            <cylinderGeometry args={[0.1, 0.08, SHIN, 8]} />
+            {mat(config.accentColor)}
+          </mesh>
+          <mesh position={[0.02, -SHIN, 0.07]}>
+            <boxGeometry args={[0.22, 0.1, 0.32]} />
+            {mat(config.accentColor)}
+          </mesh>
+        </group>
+      </group>
 
-      {/* Right upper arm */}
-      <mesh position={[0.45, 1.35, 0]} rotation={[0, 0, -0.3]}>
-        <cylinderGeometry args={[0.1, 0.09, 0.45, 8]} />
-        {mat(config.bodyColor)}
-      </mesh>
-      {/* Right forearm */}
-      <mesh position={[0.52, 1.0, 0]} rotation={[0, 0, -0.1]}>
-        <cylinderGeometry args={[0.08, 0.07, 0.4, 8]} />
-        {mat(config.accentColor)}
-      </mesh>
-      {/* Right fist/weapon hand */}
-      <mesh position={[0.55, 0.76, 0]}>
-        <boxGeometry args={[0.18, 0.16, 0.18]} />
-        {mat(config.accentColor, config.accentColor, 0.3)}
-      </mesh>
-
-      {/* Left upper leg */}
-      <mesh position={[-0.2, 0.52, 0]}>
-        <cylinderGeometry args={[0.13, 0.11, 0.55, 8]} />
-        {mat(config.bodyColor)}
-      </mesh>
-      {/* Left shin */}
-      <mesh position={[-0.2, 0.16, 0]}>
-        <cylinderGeometry args={[0.1, 0.08, 0.45, 8]} />
-        {mat(config.accentColor)}
-      </mesh>
-      {/* Left foot */}
-      <mesh position={[-0.2, -0.1, 0.06]}>
-        <boxGeometry args={[0.22, 0.1, 0.32]} />
-        {mat(config.accentColor)}
-      </mesh>
-
-      {/* Right upper leg */}
-      <mesh position={[0.2, 0.52, 0]}>
-        <cylinderGeometry args={[0.13, 0.11, 0.55, 8]} />
-        {mat(config.bodyColor)}
-      </mesh>
-      {/* Right shin */}
-      <mesh position={[0.2, 0.16, 0]}>
-        <cylinderGeometry args={[0.1, 0.08, 0.45, 8]} />
-        {mat(config.accentColor)}
-      </mesh>
-      {/* Right foot */}
-      <mesh position={[0.2, -0.1, 0.06]}>
-        <boxGeometry args={[0.22, 0.1, 0.32]} />
-        {mat(config.accentColor)}
-      </mesh>
-
-      {/* Weapon */}
-      <WeaponMesh type={config.weapon} accentColor={config.accentColor} />
+      {/* ── Left leg ── hip pivot */}
+      <group ref={lHipRef} position={[-0.2, 0.74, 0]}>
+        <mesh position={[0, -U_LEG / 2, 0]}>
+          <cylinderGeometry args={[0.13, 0.11, U_LEG, 8]} />
+          {mat(config.bodyColor)}
+        </mesh>
+        {/* Knee pivot */}
+        <group ref={lKneeRef} position={[0, -U_LEG, 0]}>
+          <mesh position={[0, -SHIN / 2, 0]}>
+            <cylinderGeometry args={[0.1, 0.08, SHIN, 8]} />
+            {mat(config.accentColor)}
+          </mesh>
+          <mesh position={[-0.02, -SHIN, 0.07]}>
+            <boxGeometry args={[0.22, 0.1, 0.32]} />
+            {mat(config.accentColor)}
+          </mesh>
+        </group>
+      </group>
     </group>
   );
 }
