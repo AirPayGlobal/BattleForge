@@ -112,6 +112,19 @@ export function Fighter3D({
   const eyeLRef = useRef<THREE.Mesh>(null);
   const eyeRRef = useRef<THREE.Mesh>(null);
 
+  // Cape cloth refs (5 horizontal strips, waving in useFrame)
+  const cape0 = useRef<THREE.Mesh>(null);
+  const cape1 = useRef<THREE.Mesh>(null);
+  const cape2 = useRef<THREE.Mesh>(null);
+  const cape3 = useRef<THREE.Mesh>(null);
+  const cape4 = useRef<THREE.Mesh>(null);
+
+  // Ground energy footprint
+  const footGlowRef = useRef<THREE.Mesh>(null);
+
+  // Per-fighter dynamic accent light
+  const accentLightRef = useRef<THREE.PointLight>(null);
+
   // Spring state
   const S = useRef({
     rSh_z: mkSp(-0.22), rSh_x: mkSp(),
@@ -359,6 +372,33 @@ export function Fighter3D({
       headRef.current.rotation.x = sp(ss.hdX, tHdX + breath * 0.009, K * 0.50, D);
       headRef.current.rotation.z = sp(ss.hdZ, tHdZ, K * 0.50, D);
     }
+
+    // ── Cape cloth simulation ──
+    const capeRefs = [cape0, cape1, cape2, cape3, cape4];
+    const capeSpd = isAttacking ? 4.0 : 2.0;
+    const capeAmp = isAttacking ? 0.14 : 0.07;
+    capeRefs.forEach((ref, i) => {
+      if (!ref.current) return;
+      const phase = i * 0.52;
+      const wave  = Math.sin(t * capeSpd + phase);
+      ref.current.position.z = -0.24 - wave * capeAmp;
+      ref.current.rotation.x = -0.06 + wave * 0.18;
+    });
+
+    // ── Ground footprint glow ──
+    if (footGlowRef.current) {
+      const fMat = footGlowRef.current.material as THREE.MeshStandardMaterial;
+      const glowTarget = isAttacking ? 1.2 + Math.abs(Math.sin(t * 7)) * 0.8 : 0.30;
+      fMat.emissiveIntensity += (glowTarget - fMat.emissiveIntensity) * 0.12;
+      const s = isAttacking ? 1.0 + Math.abs(Math.sin(t * 8)) * 0.22 : 1.0;
+      footGlowRef.current.scale.set(s, 1, s);
+    }
+
+    // ── Dynamic accent light intensity ──
+    if (accentLightRef.current) {
+      accentLightRef.current.intensity =
+        isAttacking ? 1.4 + Math.sin(t * 10) * 0.4 : 0.7 + Math.sin(t * 2.5) * 0.2;
+    }
   });
 
   // ── Material helpers ──
@@ -381,6 +421,27 @@ export function Fighter3D({
 
   return (
     <group ref={rootRef} position={position} castShadow>
+
+      {/* Per-fighter dynamic accent point light */}
+      <pointLight
+        ref={accentLightRef}
+        position={[0, 1.5, 0.4]}
+        color={cfg.accentColor}
+        intensity={0.7}
+        distance={5}
+      />
+
+      {/* Ground energy footprint */}
+      <mesh ref={footGlowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <circleGeometry args={[0.55, 32]} />
+        <meshStandardMaterial
+          color={cfg.accentColor}
+          emissive={cfg.accentColor}
+          emissiveIntensity={0.30}
+          transparent
+          opacity={0.45}
+        />
+      </mesh>
 
       {/* ══ SPINE CHAIN ══ */}
       <group ref={spineRef}>
@@ -446,15 +507,28 @@ export function Fighter3D({
             <boxGeometry args={[0.62, 0.64, 0.02]} />
             {gold(0.55)}
           </mesh>
-          {/* Glowing emblem (reactive) */}
-          <mesh ref={emblRef} position={[0, 1.44, 0.26]}>
-            <boxGeometry args={[0.30, 0.30, 0.03]} />
+          {/* Energy core — glowing sphere visible through chest gap */}
+          <mesh position={[0, 1.44, 0.08]}>
+            <sphereGeometry args={[0.10, 16, 12]} />
+            <meshStandardMaterial
+              color={cfg.accentColor}
+              emissive={cfg.accentColor}
+              emissiveIntensity={3.0}
+              roughness={0.0}
+              metalness={0.0}
+              transparent
+              opacity={0.90}
+            />
+          </mesh>
+          {/* Glowing emblem — octagonal (reactive) */}
+          <mesh ref={emblRef} position={[0, 1.44, 0.265]} rotation={[0, 0, Math.PI / 8]}>
+            <cylinderGeometry args={[0.155, 0.155, 0.032, 8]} />
             <meshStandardMaterial
               color={cfg.accentColor}
               emissive={cfg.accentColor}
               emissiveIntensity={0.8}
-              roughness={0.15}
-              metalness={0.1}
+              roughness={0.10}
+              metalness={0.15}
             />
           </mesh>
 
@@ -510,15 +584,20 @@ export function Fighter3D({
               <cylinderGeometry args={[0.16, 0.22, 0.10, 10]} />
               {mat(cfg.armorColor, cfg.emissive, 0.10)}
             </mesh>
-            {/* Brow visor plate */}
-            <mesh position={[0, 0.12, 0.195]}>
-              <boxGeometry args={[0.40, 0.07, 0.07]} />
-              {mat(cfg.armorColor, cfg.emissive, 0.12)}
+            {/* Brow visor plate — angled forward */}
+            <mesh position={[0, 0.13, 0.198]} rotation={[-0.18, 0, 0]}>
+              <boxGeometry args={[0.42, 0.075, 0.082]} />
+              {mat(cfg.armorColor, cfg.emissive, 0.14)}
             </mesh>
             {/* Visor gold trim */}
-            <mesh position={[0, 0.12, 0.232]}>
-              <boxGeometry args={[0.38, 0.03, 0.02]} />
-              {gold(0.6)}
+            <mesh position={[0, 0.13, 0.238]} rotation={[-0.18, 0, 0]}>
+              <boxGeometry args={[0.40, 0.026, 0.02]} />
+              {gold(0.7)}
+            </mesh>
+            {/* Visor glow slit — emissive accent strip below brow */}
+            <mesh position={[0, 0.04, 0.202]}>
+              <boxGeometry args={[0.34, 0.018, 0.015]} />
+              <meshStandardMaterial color={cfg.accentColor} emissive={cfg.accentColor} emissiveIntensity={2.5} roughness={0.05} />
             </mesh>
             {/* Face mask (lower) */}
             <mesh position={[0, -0.10, 0.19]}>
@@ -599,8 +678,13 @@ export function Fighter3D({
             <group ref={rElbowRef} position={[0, -U_ARM, 0]}>
               {ball(0.086, cfg.armorColor)}
               <mesh position={[0, -FOREARM / 2, 0]}>
-                <cylinderGeometry args={[0.062, 0.080, FOREARM, 8]} />
+                <cylinderGeometry args={[0.062, 0.080, FOREARM, 10]} />
                 {mat(cfg.armorColor, cfg.accentColor, 0.06)}
+              </mesh>
+              {/* Energy conduit — glowing line along forearm */}
+              <mesh position={[0.066, -FOREARM * 0.52, 0.040]}>
+                <boxGeometry args={[0.014, FOREARM * 0.82, 0.014]} />
+                <meshStandardMaterial color={cfg.accentColor} emissive={cfg.accentColor} emissiveIntensity={2.0} roughness={0.05} />
               </mesh>
               {/* Gauntlet plate */}
               <mesh position={[0, -FOREARM * 0.38, 0.092]}>
@@ -631,8 +715,13 @@ export function Fighter3D({
             <group ref={lElbowRef} position={[0, -U_ARM, 0]}>
               {ball(0.086, cfg.armorColor)}
               <mesh position={[0, -FOREARM / 2, 0]}>
-                <cylinderGeometry args={[0.062, 0.080, FOREARM, 8]} />
+                <cylinderGeometry args={[0.062, 0.080, FOREARM, 10]} />
                 {mat(cfg.armorColor, cfg.accentColor, 0.06)}
+              </mesh>
+              {/* Energy conduit — left forearm */}
+              <mesh position={[-0.066, -FOREARM * 0.52, 0.040]}>
+                <boxGeometry args={[0.014, FOREARM * 0.82, 0.014]} />
+                <meshStandardMaterial color={cfg.accentColor} emissive={cfg.accentColor} emissiveIntensity={2.0} roughness={0.05} />
               </mesh>
               <mesh position={[0, -FOREARM * 0.38, 0.092]}>
                 <boxGeometry args={[0.13, 0.20, 0.07]} />
@@ -651,6 +740,34 @@ export function Fighter3D({
               </group>
             </group>
           </group>
+
+          {/* ══ CAPE — 5 animated cloth strips ══ */}
+          <mesh ref={cape0} position={[0, 1.72, -0.24]}>
+            <boxGeometry args={[0.58, 0.10, 0.038]} />
+            {mat(cfg.armorColor, cfg.emissive, 0.10, 0.75, 0.12)}
+          </mesh>
+          <mesh ref={cape1} position={[0, 1.60, -0.24]}>
+            <boxGeometry args={[0.55, 0.10, 0.036]} />
+            {mat(cfg.armorColor, cfg.emissive, 0.09, 0.78, 0.10)}
+          </mesh>
+          <mesh ref={cape2} position={[0, 1.48, -0.24]}>
+            <boxGeometry args={[0.52, 0.10, 0.034]} />
+            {mat(cfg.bodyColor,  cfg.emissive, 0.08, 0.80, 0.08)}
+          </mesh>
+          <mesh ref={cape3} position={[0, 1.36, -0.24]}>
+            <boxGeometry args={[0.48, 0.10, 0.032]} />
+            {mat(cfg.bodyColor,  cfg.emissive, 0.07, 0.82, 0.06)}
+          </mesh>
+          <mesh ref={cape4} position={[0, 1.24, -0.24]}>
+            <boxGeometry args={[0.44, 0.10, 0.030]} />
+            {mat(cfg.bodyColor,  cfg.emissive, 0.06, 0.84, 0.05)}
+          </mesh>
+
+          {/* Spine energy conduit — vertical glowing line down the back */}
+          <mesh position={[0, 1.30, -0.215]}>
+            <boxGeometry args={[0.018, 0.72, 0.018]} />
+            <meshStandardMaterial color={cfg.accentColor} emissive={cfg.accentColor} emissiveIntensity={1.4} roughness={0.05} />
+          </mesh>
 
         </group>{/* end torsoRef */}
       </group>{/* end spineRef */}
@@ -674,8 +791,13 @@ export function Fighter3D({
             {gold(0.55)}
           </mesh>
           <mesh position={[0, -SHIN / 2, 0]}>
-            <cylinderGeometry args={[0.076, 0.096, SHIN, 8]} />
+            <cylinderGeometry args={[0.076, 0.096, SHIN, 10]} />
             {mat(cfg.armorColor, cfg.accentColor, 0.06)}
+          </mesh>
+          {/* Energy conduit — right shin */}
+          <mesh position={[0.082, -SHIN * 0.52, 0.058]}>
+            <boxGeometry args={[0.013, SHIN * 0.80, 0.013]} />
+            <meshStandardMaterial color={cfg.accentColor} emissive={cfg.accentColor} emissiveIntensity={1.6} roughness={0.05} />
           </mesh>
           {/* Tall armored boot */}
           <mesh position={[0.025, -SHIN - 0.02, 0.06]}>
@@ -713,8 +835,13 @@ export function Fighter3D({
             {gold(0.55)}
           </mesh>
           <mesh position={[0, -SHIN / 2, 0]}>
-            <cylinderGeometry args={[0.076, 0.096, SHIN, 8]} />
+            <cylinderGeometry args={[0.076, 0.096, SHIN, 10]} />
             {mat(cfg.armorColor, cfg.accentColor, 0.06)}
+          </mesh>
+          {/* Energy conduit — left shin */}
+          <mesh position={[-0.082, -SHIN * 0.52, 0.058]}>
+            <boxGeometry args={[0.013, SHIN * 0.80, 0.013]} />
+            <meshStandardMaterial color={cfg.accentColor} emissive={cfg.accentColor} emissiveIntensity={1.6} roughness={0.05} />
           </mesh>
           <mesh position={[-0.025, -SHIN - 0.02, 0.06]}>
             <boxGeometry args={[0.24, 0.18, 0.34]} />
