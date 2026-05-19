@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { EffectComposer, Bloom, Vignette, ChromaticAberration } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
+import { Vector2 } from "three";
 import ArenaScene from "./ArenaScene";
 import type { SpriteAction } from "./Fighter3D";
 
@@ -36,7 +37,7 @@ export default function Arena3D(props: Arena3DProps) {
           />
           {/* Subtle chromatic aberration for cyberpunk lens feel */}
           <ChromaticAberration
-            offset={[0.0009, 0.0009]}
+            offset={new Vector2(0.0009, 0.0009)}
             blendFunction={BlendFunction.NORMAL}
           />
           {/* Vignette darkens corners for cinematic framing */}
