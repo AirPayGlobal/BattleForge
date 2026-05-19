@@ -38,9 +38,9 @@ export default function Arena3D(props: Arena3DProps) {
           {/* Subtle chromatic aberration for cyberpunk lens feel */}
           <ChromaticAberration
             offset={new Vector2(0.0009, 0.0009)}
-            blendFunction={BlendFunction.NORMAL}
             radialModulation={false}
-            modulationOffset={0.0}
+            modulationOffset={new Vector2(0.0, 0.0)}
+            blendFunction={BlendFunction.NORMAL}
           />
           {/* Vignette darkens corners for cinematic framing */}
           <Vignette offset={0.28} darkness={0.68} blendFunction={BlendFunction.NORMAL} />
