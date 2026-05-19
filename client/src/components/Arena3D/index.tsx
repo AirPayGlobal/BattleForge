@@ -39,6 +39,8 @@ export default function Arena3D(props: Arena3DProps) {
           <ChromaticAberration
             offset={new Vector2(0.0009, 0.0009)}
             blendFunction={BlendFunction.NORMAL}
+            radialModulation={false}
+            modulationOffset={0.0}
           />
           {/* Vignette darkens corners for cinematic framing */}
           <Vignette offset={0.28} darkness={0.68} blendFunction={BlendFunction.NORMAL} />
