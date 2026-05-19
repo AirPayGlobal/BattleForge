@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
-import FighterSprite from "../components/FighterSprite";
 import Arena3D from "../components/Arena3D";
+import type { SpriteAction } from "../components/Arena3D/Fighter3D";
 import ControlsLegend from "../components/ControlsLegend";
 import { useFightControls } from "../hooks/useFightControls";
 import type { Move } from "../hooks/useFightControls";
@@ -14,6 +14,12 @@ import { detectCombo } from "../lib/combos";
 import type { Combo } from "../lib/combos";
 import { GameAudio } from "../lib/gameAudio";
 import { COMBOS } from "../lib/combos";
+
+const NPC_TIER_COLORS: Record<string, string> = {
+  BEGINNER: "#22c55e",
+  WARRIOR: "#f59e0b",
+  ELITE:    "#ef4444",
+};
 
 type ServerAction = "attack" | "special" | "block";
 type FightPhase =
@@ -119,10 +125,12 @@ export default function NpcFightPage() {
   const location = useLocation();
   const { player, refreshPlayer } = useAuth();
 
-  const locationState = location.state as { weaponId?: string; npcName?: string; npcCharacter?: string } | null;
+  const locationState = location.state as { weaponId?: string; npcName?: string; npcCharacter?: string; npcTier?: string } | null;
   const weaponId = locationState?.weaponId ?? "";
   const npcName = locationState?.npcName ?? "UNKNOWN";
   const npcCharacter = locationState?.npcCharacter ?? "Ironclad";
+  const npcTier = locationState?.npcTier ?? "BEGINNER";
+  const tierColor = NPC_TIER_COLORS[npcTier] ?? "#FF3D6B";
   const playerCharacter = player?.character?.name ?? "Ironclad";
 
   const [phase, setPhase] = useState<FightPhase>("vs-intro");
@@ -136,6 +144,7 @@ export default function NpcFightPage() {
   const [highlightedMove, setHighlightedMove] = useState<Move | null>(null);
   const [shakePlayer, setShakePlayer] = useState(false);
   const [shakeNpc, setShakeNpc] = useState(false);
+  const [npcAnimAction, setNpcAnimAction] = useState<SpriteAction>("idle");
   const [floatingDmg, setFloatingDmg] = useState<{ player?: number; npc?: number } | null>(null);
   const [lastRoundResult, setLastRoundResult] = useState<"WIN" | "LOSS" | null>(null);
   const [matchResult, setMatchResult] = useState<{ result: "WIN" | "LOSS"; xpEarned: number } | null>(null);
@@ -225,6 +234,14 @@ export default function NpcFightPage() {
 
       setShakePlayer(!simRound.playerWins);
       setShakeNpc(simRound.playerWins);
+
+      // NPC reacts: attack when winning, idle otherwise (hit handled by shakeNpc)
+      if (!simRound.playerWins) {
+        const npcMove: SpriteAction = simRound.action === "special" ? "weapon-strike" : simRound.action === "block" ? "kick" : "punch";
+        setNpcAnimAction(npcMove);
+        setTimeout(() => setNpcAnimAction("idle"), 900);
+      }
+
       setFloatingDmg({
         player: simRound.playerWins ? undefined : simRound.playerDmgTaken,
         npc: simRound.playerWins ? simRound.npcDmgTaken : undefined,
@@ -385,21 +402,28 @@ export default function NpcFightPage() {
   // ─── VS Intro ──────────────────────────────────────────────────────────────
   if (phase === "vs-intro") {
     return (
-      <div
-        className="fixed inset-0 flex items-center justify-center"
-        style={{ background: "radial-gradient(ellipse at center, #1a0a0a 0%, #0a0005 60%, #000 100%)" }}
-      >
-        <div className="flex items-center gap-8 sm:gap-16 w-full max-w-2xl px-8">
+      <div className="fixed inset-0">
+        {/* Live 3D arena as background */}
+        <Arena3D
+          playerCharacter={playerCharacter}
+          npcCharacter={npcCharacter}
+          playerAction="idle"
+          npcAction="idle"
+          tierColor={tierColor}
+        />
+
+        {/* Name overlays */}
+        <div className="absolute inset-0 pointer-events-none flex items-end justify-between px-8 sm:px-16 pb-16">
           <motion.div
-            initial={{ opacity: 0, x: -80 }}
+            initial={{ opacity: 0, x: -60 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="flex-1 flex flex-col items-center"
+            className="flex flex-col items-start"
           >
-            <FighterSprite character={playerCharacter} side="left" action="idle" size={180} />
+            <p className="font-ui text-xs uppercase tracking-[0.3em] mb-1" style={{ color: "rgba(0,255,255,0.6)" }}>Player</p>
             <p
-              className="font-display text-2xl tracking-widest uppercase mt-4"
-              style={{ color: "#00FFFF", textShadow: "0 0 20px rgba(0,255,255,0.6)" }}
+              className="font-display text-3xl sm:text-4xl tracking-widest uppercase"
+              style={{ color: "#00FFFF", textShadow: "0 0 20px rgba(0,255,255,0.7)" }}
             >
               {player?.username ?? "YOU"}
             </p>
@@ -408,34 +432,35 @@ export default function NpcFightPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
+            transition={{ delay: 0.35, duration: 0.5 }}
+            className="flex flex-col items-center"
           >
             <motion.p
               animate={{
                 textShadow: [
-                  "0 0 20px #FF3D6B, 0 0 60px #FF3D6B80",
-                  "0 0 40px #FF3D6B, 0 0 100px #FF3D6BB0",
-                  "0 0 20px #FF3D6B, 0 0 60px #FF3D6B80",
+                  `0 0 20px ${tierColor}, 0 0 60px ${tierColor}80`,
+                  `0 0 40px ${tierColor}, 0 0 100px ${tierColor}B0`,
+                  `0 0 20px ${tierColor}, 0 0 60px ${tierColor}80`,
                 ],
               }}
               transition={{ duration: 0.8, repeat: Infinity }}
               className="font-display text-6xl sm:text-7xl"
-              style={{ color: "#FF3D6B" }}
+              style={{ color: tierColor }}
             >
               VS
             </motion.p>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 80 }}
+            initial={{ opacity: 0, x: 60 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="flex-1 flex flex-col items-center"
+            className="flex flex-col items-end"
           >
-            <FighterSprite character={npcCharacter} side="right" action="idle" size={180} />
+            <p className="font-ui text-xs uppercase tracking-[0.3em] mb-1" style={{ color: `${tierColor}99` }}>Opponent</p>
             <p
-              className="font-display text-2xl tracking-widest uppercase mt-4"
-              style={{ color: "#FF3D6B", textShadow: "0 0 20px rgba(255,61,107,0.6)" }}
+              className="font-display text-3xl sm:text-4xl tracking-widest uppercase"
+              style={{ color: tierColor, textShadow: `0 0 20px ${tierColor}99` }}
             >
               {npcName}
             </p>
@@ -450,35 +475,32 @@ export default function NpcFightPage() {
     const won = matchResult.result === "WIN";
     return (
       <div
-        className="fixed inset-0 flex items-center justify-center p-6"
+        className="fixed inset-0"
         style={{
-          background: "radial-gradient(ellipse at center, #1a0a0a 0%, #0a0005 60%, #000 100%)",
           outline: isFlashing ? `4px solid ${flashColor}` : "none",
           outlineOffset: "-4px",
           transition: "outline 0.1s",
         }}
       >
+        {/* Live 3D arena showing victory/defeat poses */}
+        <Arena3D
+          playerCharacter={playerCharacter}
+          npcCharacter={npcCharacter}
+          playerAction={won ? "victory" : "defeat"}
+          npcAction={won ? "hit" : "victory"}
+          tierColor={tierColor}
+        />
+
+        {/* Dark overlay + result UI */}
+        <div className="absolute inset-0 flex items-center justify-center p-6"
+          style={{ background: "rgba(0,0,0,0.55)" }}
+        >
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 20 }}
           className="text-center max-w-md w-full"
         >
-          <div className="flex items-end justify-center gap-8 mb-6">
-            <FighterSprite
-              character={playerCharacter}
-              side="left"
-              action={won ? "victory" : "defeat"}
-              size={160}
-            />
-            <FighterSprite
-              character={npcCharacter}
-              side="right"
-              action={won ? "defeat" : "victory"}
-              size={160}
-            />
-          </div>
-
           <motion.h1
             animate={{
               textShadow: won
@@ -540,6 +562,7 @@ export default function NpcFightPage() {
             </motion.button>
           </div>
         </motion.div>
+        </div>
       </div>
     );
   }
@@ -711,8 +734,8 @@ export default function NpcFightPage() {
             playerCharacter={playerCharacter}
             npcCharacter={npcCharacter}
             playerAction={shakePlayer ? "hit" : selectedMove ?? highlightedMove ?? "idle"}
-            npcAction={shakeNpc ? "hit" : "idle"}
-            tierColor="#FF3D6B"
+            npcAction={shakeNpc ? "hit" : npcAnimAction}
+            tierColor={tierColor}
             shakeIntensity={isShaking ? 0.8 : 0}
           />
 

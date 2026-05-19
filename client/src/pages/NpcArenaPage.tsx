@@ -61,7 +61,7 @@ export default function NpcArenaPage() {
 
   const startFight = (npc: Npc) => {
     navigate(`/arena/npc/fight/${npc.id}`, {
-      state: { weaponId: weapons[0]?.id, npcName: npc.name, npcCharacter: npc.character?.name },
+      state: { weaponId: weapons[0]?.id, npcName: npc.name, npcCharacter: npc.character?.name, npcTier: npc.tier },
     });
   };
 
