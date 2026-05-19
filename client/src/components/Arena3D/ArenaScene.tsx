@@ -4,6 +4,8 @@ import * as THREE from "three";
 import ArenaFloor from "./ArenaFloor";
 import Crowd from "./Crowd";
 import Fighter3D, { type SpriteAction } from "./Fighter3D";
+import CityScape from "./CityScape";
+import FloatingParticles from "./FloatingParticles";
 
 interface ArenaSceneProps {
   playerCharacter: string;
@@ -39,6 +41,14 @@ function ArenaScene({
     // Rim lights breathe out of phase for a living arena feel
     if (rimLRef.current) rimLRef.current.intensity = 1.15 + Math.sin(t * 1.7) * 0.25;
     if (rimRRef.current) rimRRef.current.intensity = 1.15 + Math.sin(t * 1.7 + Math.PI) * 0.25;
+
+    // Dynamic FOV — slight zoom on attacks for cinematic punch
+    const isAnyAttack = ["punch","attack","kick","weapon-strike"].includes(playerAction) ||
+                        ["punch","attack","kick","weapon-strike"].includes(npcAction);
+    const targetFov = isAnyAttack ? 57 : 52;
+    (state.camera as THREE.PerspectiveCamera).fov +=
+      (targetFov - (state.camera as THREE.PerspectiveCamera).fov) * 0.06;
+    (state.camera as THREE.PerspectiveCamera).updateProjectionMatrix();
   });
 
   return (
@@ -78,6 +88,8 @@ function ArenaScene({
 
       {/* ─── Scene ─── */}
       <ArenaFloor tierColor={tierColor} />
+      <CityScape />
+      <FloatingParticles color={tierColor} />
       <Crowd tierColor={tierColor} />
 
       {/* ─── Fighters ─── */}

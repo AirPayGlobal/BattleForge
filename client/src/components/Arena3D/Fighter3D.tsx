@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import WeaponMesh from "./WeaponMesh";
+import AttackEffect from "./AttackEffect";
 
 export type SpriteAction =
   | "idle" | "attack" | "hit" | "block" | "victory" | "defeat"
@@ -443,6 +444,9 @@ export function Fighter3D({
         />
       </mesh>
 
+      {/* Slash arc VFX — triggered on attack actions */}
+      <AttackEffect action={action} accentColor={cfg.accentColor} />
+
       {/* ══ SPINE CHAIN ══ */}
       <group ref={spineRef}>
 
@@ -675,6 +679,11 @@ export function Fighter3D({
               <cylinderGeometry args={[0.080, 0.102, U_ARM, 8]} />
               {mat(cfg.bodyColor, cfg.emissive, 0.05)}
             </mesh>
+            {/* Bicep plate */}
+            <mesh position={[0, -U_ARM * 0.42, 0.098]}>
+              <boxGeometry args={[0.15, 0.22, 0.078]} />
+              {mat(cfg.armorColor, cfg.emissive, 0.07)}
+            </mesh>
             <group ref={rElbowRef} position={[0, -U_ARM, 0]}>
               {ball(0.086, cfg.armorColor)}
               <mesh position={[0, -FOREARM / 2, 0]}>
@@ -711,6 +720,11 @@ export function Fighter3D({
             <mesh position={[0, -U_ARM / 2, 0]}>
               <cylinderGeometry args={[0.080, 0.102, U_ARM, 8]} />
               {mat(cfg.bodyColor, cfg.emissive, 0.05)}
+            </mesh>
+            {/* Bicep plate */}
+            <mesh position={[0, -U_ARM * 0.42, 0.098]}>
+              <boxGeometry args={[0.15, 0.22, 0.078]} />
+              {mat(cfg.armorColor, cfg.emissive, 0.07)}
             </mesh>
             <group ref={lElbowRef} position={[0, -U_ARM, 0]}>
               {ball(0.086, cfg.armorColor)}
@@ -779,6 +793,15 @@ export function Fighter3D({
           <cylinderGeometry args={[0.096, 0.124, U_LEG, 8]} />
           {mat(cfg.bodyColor)}
         </mesh>
+        {/* Thigh armor plate */}
+        <mesh position={[0, -U_LEG * 0.38, 0.118]}>
+          <boxGeometry args={[0.19, 0.28, 0.085]} />
+          {mat(cfg.armorColor, cfg.emissive, 0.08)}
+        </mesh>
+        <mesh position={[0, -U_LEG * 0.38, 0.163]}>
+          <boxGeometry args={[0.15, 0.22, 0.022]} />
+          {gold(0.45)}
+        </mesh>
         <group ref={rKneeRef} position={[0, -U_LEG, 0]}>
           {ball(0.098, cfg.armorColor)}
           {/* Knee guard */}
@@ -823,6 +846,15 @@ export function Fighter3D({
         <mesh position={[0, -U_LEG / 2, 0]}>
           <cylinderGeometry args={[0.096, 0.124, U_LEG, 8]} />
           {mat(cfg.bodyColor)}
+        </mesh>
+        {/* Thigh armor plate */}
+        <mesh position={[0, -U_LEG * 0.38, 0.118]}>
+          <boxGeometry args={[0.19, 0.28, 0.085]} />
+          {mat(cfg.armorColor, cfg.emissive, 0.08)}
+        </mesh>
+        <mesh position={[0, -U_LEG * 0.38, 0.163]}>
+          <boxGeometry args={[0.15, 0.22, 0.022]} />
+          {gold(0.45)}
         </mesh>
         <group ref={lKneeRef} position={[0, -U_LEG, 0]}>
           {ball(0.098, cfg.armorColor)}
