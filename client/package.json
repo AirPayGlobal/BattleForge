@@ -1,7 +1,8 @@
 {
   "name": "battleforge-client",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "BattleForge — Cyberpunk samurai arcade fighting game.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,16 +13,10 @@
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
     "@react-three/postprocessing": "^2.16.3",
-    "@supabase/supabase-js": "^2.101.1",
-    "axios": "^1.7.7",
     "framer-motion": "^11.11.11",
     "postprocessing": "^6.39.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-hot-toast": "^2.4.1",
-    "react-icons": "^5.3.0",
-    "react-router-dom": "^6.28.0",
-    "socket.io-client": "^4.8.1",
     "three": "^0.176.0",
     "zustand": "^5.0.1"
   },

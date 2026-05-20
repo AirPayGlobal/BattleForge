@@ -9,3 +9,4 @@ coverage/
 .turbo/
 .agents/
 .claude/
+client/tsconfig.tsbuildinfo

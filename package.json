@@ -1,8 +1,8 @@
 {
   "name": "battleforge",
   "private": true,
-  "version": "0.1.0",
-  "description": "Craft your weapon. Stake your name.",
+  "version": "0.2.0",
+  "description": "BattleForge — Cyberpunk samurai arcade fighting game.",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "cd client && npm run dev",
